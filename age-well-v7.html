@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Age-Well診断 | あなたらしいAge-Wellを見つける</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Noto+Sans+JP:wght@300;400;500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+/* ============================================================
+   DESIGN TOKENS
+============================================================ */
+:root {
+  --sage:#7A9E7E; --sage-light:#A8C5AB; --sage-pale:#EEF4EE;
+  --moss:#4A6741; --warm:#C8A882; --warm-light:#F0E4D4; --warm-pale:#FAF6F0;
+  --charcoal:#2C2C2C; --mid:#6B6B6B; --light:#F7F5F2;
+  --white:#FFFFFF; --border:#E2DDD8;
+  --lv1:#BFA89A; --lv2:#A8B8A0; --lv3:#82A88A; --lv4:#5D8F67; --lv5:#3D6E45;
+  --red:#C0605C; --red-bg:#FEF0EF;
+  --radius:16px; --shadow:0 4px 24px rgba(0,0,0,.08);
+  --admin-bg:#F4F6F4; --sidebar-w:224px;
+}
+
+/* ============================================================
+   RESET / BASE
+============================================================ */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--light);color:var(--charcoal);line-height:1.8;-webkit-font-smoothing:antialiased;}
+button{font-family:'Noto Sans JP',sans-serif;}
+
+/* ============================================================
+   PAGE SYSTEM
+============================================================ */
+.page{display:none;min-height:100vh;}
+.page.active{display:block;animation:fadeIn .4s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ============================================================
+   GLOBAL HEADER
+============================================================ */
+.g-header{
+  background:var(--white);border-bottom:1px solid var(--border);
+  padding:13px 24px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:300;
+}
+.g-logo{font-family:'DM Serif Display',serif;font-size:19px;color:var(--moss);cursor:pointer;}
+.g-logo em{color:var(--warm);font-style:normal;}
+.g-nav{display:flex;gap:8px;align-items:center;}
+.g-nav-btn{
+  background:none;border:1px solid var(--border);border-radius:8px;
+  padding:6px 14px;font-size:12px;cursor:pointer;color:var(--mid);transition:all .2s;
+}
+.g-nav-btn:hover{border-color:var(--sage);color:var(--moss);}
+.g-nav-btn.admin-active{background:var(--moss);color:var(--white);border-color:var(--moss);}
+.g-logout-btn{
+  background:none;border:1px solid #E0B0A0;border-radius:8px;
+  padding:6px 14px;font-size:12px;cursor:pointer;color:#A06050;transition:all .2s;
+}
+.g-logout-btn:hover{background:#FEF0EF;}
+
+/* ============================================================
+   SHARED BUTTONS
+============================================================ */
+.btn-p{
+  display:inline-flex;align-items:center;gap:9px;
+  background:var(--moss);color:var(--white);border:none;
+  padding:15px 40px;border-radius:50px;font-size:15px;font-weight:500;
+  cursor:pointer;transition:all .3s;letter-spacing:.05em;
+  box-shadow:0 4px 18px rgba(61,110,69,.28);
+}
+.btn-p:hover{background:var(--sage);transform:translateY(-2px);box-shadow:0 8px 26px rgba(61,110,69,.35);}
+.btn-p:disabled{background:#B0C4B4;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-s{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--white);border:1px solid var(--border);
+  color:var(--charcoal);padding:12px 24px;border-radius:50px;
+  font-size:14px;cursor:pointer;transition:all .2s;
+}
+.btn-s:hover{border-color:var(--sage);color:var(--moss);}
+.btn-pdf{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--warm);color:var(--white);border:none;
+  padding:12px 24px;border-radius:50px;font-size:14px;font-weight:500;
+  cursor:pointer;transition:all .2s;
+}
+.btn-pdf:hover{background:#B89060;}
+
+/* ============================================================
+   FORM COMPONENTS
+============================================================ */
+.f-group{margin-bottom:22px;}
+.f-label{display:block;font-size:14px;font-weight:500;margin-bottom:8px;}
+.f-label .req{color:var(--red);font-size:11px;margin-left:6px;background:var(--red-bg);padding:1px 6px;border-radius:4px;}
+.f-input{
+  width:100%;padding:14px 16px;border:2px solid var(--border);
+  border-radius:12px;font-size:16px;font-family:'Noto Sans JP',sans-serif;
+  background:var(--white);transition:border-color .2s;color:var(--charcoal);
+}
+.f-input:focus{outline:none;border-color:var(--sage);box-shadow:0 0 0 3px rgba(122,158,126,.12);}
+.f-input.err{border-color:var(--red);background:var(--red-bg);}
+.f-error{font-size:12px;color:var(--red);margin-top:5px;display:none;}
+.f-error.show{display:block;}
+
+/* ============================================================
+   TOP PAGE
+============================================================ */
+.hero{
+  background:linear-gradient(155deg,#F7F5F2 0%,#EEF4EE 50%,#F0E4D4 100%);
+  padding:80px 24px 64px;text-align:center;position:relative;overflow:hidden;
+}
+.hero::before{content:'';position:absolute;top:-70px;right:-70px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(122,158,126,.14) 0%,transparent 70%);}
+.hero::after{content:'';position:absolute;bottom:-50px;left:-50px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(200,168,130,.16) 0%,transparent 70%);}
+.hero-tag{display:inline-block;background:var(--sage-pale);border:1px solid var(--sage-light);color:var(--moss);font-size:11px;letter-spacing:.12em;padding:4px 14px;border-radius:20px;margin-bottom:22px;font-weight:500;}
+.hero h1{font-family:'Noto Serif JP',serif;font-size:clamp(26px,6vw,46px);font-weight:300;line-height:1.5;margin-bottom:14px;letter-spacing:.04em;}
+.hero h1 em{font-style:italic;color:var(--moss);}
+.hero-copy{font-size:15px;color:var(--mid);max-width:480px;margin:0 auto 36px;line-height:1.9;font-weight:300;}
+.hero-meta{display:flex;justify-content:center;gap:32px;margin-bottom:36px;flex-wrap:wrap;}
+.hero-meta .num{font-family:'DM Serif Display',serif;font-size:30px;color:var(--moss);display:block;line-height:1;}
+.hero-meta .lbl{font-size:11px;color:var(--mid);letter-spacing:.08em;}
+.sec-label{font-size:11px;letter-spacing:.14em;color:var(--sage);font-weight:500;text-transform:uppercase;margin-bottom:10px;}
+.sec-title{font-family:'Noto Serif JP',serif;font-size:clamp(19px,4vw,26px);font-weight:400;margin-bottom:36px;letter-spacing:.03em;}
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;}
+.feat-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:22px 18px;transition:all .3s;}
+.feat-card:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:var(--sage-light);}
+.feat-icon{width:40px;height:40px;background:var(--sage-pale);border-radius:11px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:19px;}
+.feat-card h3{font-size:14px;font-weight:500;margin-bottom:5px;}
+.feat-card p{font-size:13px;color:var(--mid);line-height:1.7;font-weight:300;}
+.lv-chips{display:flex;gap:9px;flex-wrap:wrap;margin-top:24px;}
+.lv-chip{background:var(--white);border:1px solid var(--border);border-radius:50px;padding:8px 16px;font-size:13px;display:flex;align-items:center;gap:7px;}
+.lv-chip .dot{width:10px;height:10px;border-radius:50%;}
+.top-feat-sec{padding:56px 24px;max-width:860px;margin:0 auto;}
+.top-lv-sec{background:var(--sage-pale);padding:56px 24px;}
+.top-lv-inner{max-width:860px;margin:0 auto;}
+.top-cta-sec{padding:68px 24px;text-align:center;background:var(--white);}
+.top-cta-sec p{font-size:13px;color:var(--mid);margin-top:12px;font-weight:300;}
+.back-btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mid);background:none;border:none;cursor:pointer;margin-bottom:32px;padding:0;transition:color .2s;}
+.back-btn:hover{color:var(--moss);}
+
+/* ============================================================
+   INTRO PAGE
+============================================================ */
+.intro-wrap{max-width:600px;margin:0 auto;padding:52px 24px;}
+.intro-h2{font-family:'Noto Serif JP',serif;font-size:clamp(20px,4vw,30px);font-weight:400;line-height:1.5;margin-top:8px;letter-spacing:.03em;}
+.intro-what{background:var(--sage-pale);border-radius:var(--radius);padding:22px;margin-bottom:26px;}
+.intro-what-h{font-size:12px;letter-spacing:.1em;color:var(--moss);font-weight:500;margin-bottom:12px;text-transform:uppercase;}
+.intro-item{display:flex;align-items:flex-start;gap:11px;font-size:14px;margin-bottom:9px;}
+.badge{background:var(--moss);color:var(--white);border-radius:6px;padding:2px 10px;font-size:11px;font-weight:500;white-space:nowrap;margin-top:2px;}
+.scale-prev{display:flex;gap:7px;flex-wrap:wrap;}
+.sp-item{flex:1;min-width:68px;background:var(--light);border:1px solid var(--border);border-radius:10px;padding:9px 6px;text-align:center;}
+.sp-val{font-family:'DM Serif Display',serif;font-size:21px;color:var(--moss);display:block;line-height:1;}
+.sp-desc{font-size:10px;color:var(--mid);margin-top:3px;line-height:1.3;}
+.intro-note{background:var(--warm-pale);border-left:3px solid var(--warm);border-radius:0 10px 10px 0;padding:13px 17px;font-size:13px;color:var(--mid);margin-bottom:32px;line-height:1.7;}
+
+/* ============================================================
+   USER INFO PAGE
+============================================================ */
+.ui-wrap{max-width:480px;margin:0 auto;padding:56px 24px;}
+.ui-step{font-size:11px;letter-spacing:.12em;color:var(--sage);font-weight:500;text-transform:uppercase;margin-bottom:8px;}
+.ui-h2{font-family:'Noto Serif JP',serif;font-size:24px;font-weight:400;margin-bottom:8px;}
+.ui-sub{font-size:14px;color:var(--mid);margin-bottom:32px;line-height:1.7;font-weight:300;}
+.consent-box{background:var(--warm-pale);border:1px solid var(--warm-light);border-radius:12px;padding:14px 17px;margin-bottom:26px;font-size:13px;color:var(--mid);line-height:1.7;}
+
+/* ============================================================
+   QUIZ PAGE
+============================================================ */
+.quiz-prog-bar{background:var(--white);border-bottom:1px solid var(--border);padding:13px 24px;position:sticky;top:57px;z-index:90;}
+.quiz-prog-info{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;font-size:13px;}
+.qpi-cat{font-weight:500;color:var(--moss);}
+.qpi-cnt{color:var(--mid);}
+.prog-track{background:var(--sage-pale);border-radius:4px;height:5px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--sage),var(--moss));border-radius:4px;transition:width .4s ease;}
+.quiz-content{max-width:680px;margin:0 auto;padding:26px 24px 80px;}
+.cat-hdr{display:flex;align-items:center;gap:13px;margin-bottom:22px;}
+.cat-badge{width:42px;height:42px;background:var(--moss);color:var(--white);border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:19px;flex-shrink:0;}
+.cat-hdr-info h2{font-family:'Noto Serif JP',serif;font-size:17px;font-weight:400;}
+.cat-hdr-info p{font-size:12px;color:var(--mid);}
+.q-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:22px 20px;margin-bottom:13px;transition:border-color .2s;}
+.q-card.answered{border-color:var(--sage-light);}
+.q-card.e{border-color:var(--red);background:#FFF8F8;animation:shake .4s;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.q-num{font-size:11px;color:var(--sage);font-weight:500;letter-spacing:.1em;margin-bottom:7px;}
+.q-text{font-size:15px;line-height:1.85;margin-bottom:17px;}
+.scale-grp{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.sc-btn{background:var(--light);border:2px solid var(--border);border-radius:11px;padding:10px 2px;text-align:center;cursor:pointer;transition:all .2s;}
+.sc-btn:hover{border-color:var(--sage);background:var(--sage-pale);}
+.sc-btn.sel{background:var(--moss);border-color:var(--moss);color:var(--white);}
+.sc-btn .v{font-family:'DM Serif Display',serif;font-size:20px;display:block;line-height:1;margin-bottom:3px;}
+.sc-btn .l{font-size:9px;line-height:1.3;display:block;color:var(--mid);}
+.sc-btn.sel .l{color:rgba(255,255,255,.85);}
+.quiz-nav{display:flex;gap:11px;margin-top:26px;align-items:center;flex-wrap:wrap;}
+
+/* ============================================================
+   RESULT PAGE
+============================================================ */
+.res-hero{
+  background:linear-gradient(155deg,#2A3A2C 0%,#3A6840 60%,#5A8C64 100%);
+  color:var(--white);padding:52px 24px 68px;text-align:center;position:relative;overflow:hidden;
+}
+.res-hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='20' fill='%23fff' fill-opacity='.03'/%3E%3C/svg%3E");}
+.res-name{font-size:13px;opacity:.75;margin-bottom:6px;letter-spacing:.06em;}
+.res-label{font-size:11px;letter-spacing:.14em;opacity:.7;text-transform:uppercase;margin-bottom:12px;}
+.res-h2{font-family:'Noto Serif JP',serif;font-size:clamp(18px,4vw,28px);font-weight:300;line-height:1.6;margin-bottom:6px;letter-spacing:.04em;}
+.res-score{font-family:'DM Serif Display',serif;font-size:clamp(56px,12vw,90px);line-height:1;margin:12px 0 4px;}
+.res-score-lbl{font-size:13px;opacity:.7;letter-spacing:.08em;}
+.res-cards{max-width:840px;margin:-32px auto 0;padding:0 22px 52px;display:flex;flex-direction:column;gap:16px;}
+.r-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:26px 24px;box-shadow:var(--shadow);}
+.r-card-lbl{font-size:11px;letter-spacing:.12em;color:var(--sage);font-weight:500;text-transform:uppercase;margin-bottom:11px;}
+.lv-disp{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+.lv-badge{width:66px;height:66px;border-radius:17px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+.lv-badge .lv{font-size:10px;font-weight:500;letter-spacing:.1em;color:var(--white);opacity:.85;}
+.lv-badge .n{font-family:'DM Serif Display',serif;font-size:34px;line-height:1;color:var(--white);}
+.lv-info h3{font-family:'Noto Serif JP',serif;font-size:18px;font-weight:400;margin-bottom:3px;}
+.lv-info .sn{font-size:12px;color:var(--mid);}
+.lv-state{background:var(--sage-pale);border-radius:10px;padding:12px 15px;font-size:14px;margin-bottom:11px;}
+.lv-desc{font-size:13px;line-height:1.85;color:var(--mid);border-top:1px solid var(--border);padding-top:13px;}
+.str-disp{display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;}
+.str-icon{width:50px;height:50px;background:var(--warm-pale);border:2px solid var(--warm);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0;}
+.str-info h3{font-family:'Noto Serif JP',serif;font-size:18px;font-weight:400;}
+.str-info .sc{font-size:12px;color:var(--warm);font-weight:500;}
+.str-desc{font-size:13px;line-height:1.85;color:var(--mid);border-top:1px solid var(--border);padding-top:13px;}
+.chart-wrap{position:relative;max-width:360px;margin:0 auto;padding:14px 0;}
+.cs-row{display:flex;align-items:center;gap:11px;margin-bottom:9px;}
+.cs-lbl{width:160px;font-size:12px;flex-shrink:0;display:flex;align-items:center;gap:6px;}
+.cs-code{width:21px;height:21px;background:var(--sage-pale);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:var(--moss);flex-shrink:0;}
+.cs-bar-wrap{flex:1;height:6px;background:var(--sage-pale);border-radius:3px;overflow:hidden;}
+.cs-bar{height:100%;background:linear-gradient(90deg,var(--sage),var(--moss));border-radius:3px;transition:width 1s ease;}
+.cs-val{font-family:'DM Serif Display',serif;font-size:14px;color:var(--moss);width:26px;text-align:right;}
+.advice-card{background:linear-gradient(135deg,var(--sage-pale) 0%,var(--warm-pale) 100%);border:1px solid var(--border);border-radius:var(--radius);padding:26px 24px;}
+.advice-text{font-family:'Noto Serif JP',serif;font-size:15px;line-height:2.1;color:var(--charcoal);font-weight:300;letter-spacing:.02em;}
+.res-cta{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:26px 24px;text-align:center;}
+.res-cta h3{font-family:'Noto Serif JP',serif;font-size:17px;font-weight:400;margin-bottom:16px;}
+.cta-btns{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;}
+
+/* ============================================================
+   LOGIN PAGE
+============================================================ */
+#page-login{background:linear-gradient(155deg,#F4F6F4 0%,#EEF4EE 100%);}
+.login-wrap{
+  max-width:420px;margin:0 auto;padding:60px 24px;
+  display:flex;flex-direction:column;align-items:center;
+}
+.login-logo{font-family:'DM Serif Display',serif;font-size:28px;color:var(--moss);margin-bottom:6px;text-align:center;}
+.login-logo em{color:var(--warm);font-style:normal;}
+.login-sub{font-size:13px;color:var(--mid);margin-bottom:36px;text-align:center;font-weight:300;}
+.login-card{background:var(--white);border:1px solid var(--border);border-radius:20px;padding:36px 32px;width:100%;box-shadow:var(--shadow);}
+.login-card h2{font-family:'Noto Serif JP',serif;font-size:18px;font-weight:400;margin-bottom:24px;color:var(--charcoal);}
+.login-err{background:#FEF0EF;border:1px solid #F0B0A0;border-radius:10px;padding:11px 15px;font-size:13px;color:var(--red);margin-bottom:18px;display:none;}
+.login-err.show{display:block;animation:fadeIn .3s ease;}
+.login-hint{background:var(--sage-pale);border-radius:10px;padding:11px 15px;font-size:12px;color:var(--moss);margin-top:16px;line-height:1.6;text-align:center;}
+.pw-wrap{position:relative;}
+.pw-toggle{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--mid);font-size:13px;padding:4px;}
+
+/* ============================================================
+   ADMIN LAYOUT
+============================================================ */
+#page-admin{background:var(--admin-bg);}
+.admin-body{display:flex;min-height:calc(100vh - 57px);}
+.sidebar{
+  width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);
+  padding:20px 0;flex-shrink:0;position:sticky;top:57px;
+  height:calc(100vh - 57px);overflow-y:auto;
+}
+.sb-label{font-size:10px;letter-spacing:.14em;color:var(--sage);font-weight:500;text-transform:uppercase;padding:0 18px 7px;margin-top:14px;}
+.sb-item{
+  display:flex;align-items:center;gap:9px;padding:10px 18px;cursor:pointer;
+  font-size:13px;color:var(--mid);transition:all .2s;border-left:3px solid transparent;
+}
+.sb-item:hover{background:var(--sage-pale);color:var(--charcoal);}
+.sb-item.active{background:var(--sage-pale);color:var(--moss);font-weight:500;border-left-color:var(--moss);}
+.sb-item .ico{font-size:15px;width:20px;text-align:center;}
+.sb-divider{border:none;border-top:1px solid var(--border);margin:12px 18px;}
+.admin-main{flex:1;padding:28px;min-width:0;overflow-x:auto;}
+
+/* ADMIN SECTION TOGGLE */
+.a-sec{display:none;}
+.a-sec.active{display:block;animation:fadeIn .35s ease;}
+
+/* DASHBOARD */
+.dash-title{font-family:'Noto Serif JP',serif;font-size:22px;font-weight:400;margin-bottom:4px;}
+.dash-sub{font-size:13px;color:var(--mid);margin-bottom:22px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:13px;margin-bottom:24px;}
+.kpi-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px;}
+.kpi-lbl{font-size:10px;letter-spacing:.1em;color:var(--sage);font-weight:500;text-transform:uppercase;margin-bottom:7px;}
+.kpi-val{font-family:'DM Serif Display',serif;font-size:34px;color:var(--moss);line-height:1;}
+.kpi-sub{font-size:11px;color:var(--mid);margin-top:3px;}
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:24px;}
+.ch-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px 18px;}
+.ch-card h4{font-size:13px;font-weight:500;color:var(--charcoal);margin-bottom:14px;}
+.ch-card canvas{max-height:200px;}
+
+/* TABLE */
+.tbl-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.tbl-toolbar{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;gap:9px;align-items:center;flex-wrap:wrap;}
+.tbl-search{flex:1;min-width:160px;padding:8px 13px;border:1px solid var(--border);border-radius:9px;font-size:14px;font-family:'Noto Sans JP',sans-serif;}
+.tbl-search:focus{outline:none;border-color:var(--sage);}
+.tbl-select{padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'Noto Sans JP',sans-serif;background:var(--white);cursor:pointer;}
+.btn-csv{
+  background:var(--sage);color:var(--white);border:none;padding:9px 16px;
+  border-radius:9px;font-size:13px;cursor:pointer;transition:all .2s;
+  display:inline-flex;align-items:center;gap:5px;font-weight:500;white-space:nowrap;
+}
+.btn-csv:hover{background:var(--moss);}
+.dt{width:100%;border-collapse:collapse;font-size:13px;}
+.dt th{
+  background:var(--admin-bg);padding:10px 13px;text-align:left;
+  font-size:11px;font-weight:500;letter-spacing:.07em;color:var(--mid);
+  text-transform:uppercase;white-space:nowrap;border-bottom:1px solid var(--border);
+  cursor:pointer;user-select:none;
+}
+.dt th:hover{color:var(--moss);}
+.dt th.sort-asc::after{content:' ↑';}
+.dt th.sort-desc::after{content:' ↓';}
+.dt td{padding:11px 13px;border-bottom:1px solid #F0ECE8;vertical-align:middle;}
+.dt tr:last-child td{border-bottom:none;}
+.dt tbody tr{cursor:pointer;transition:background .15s;}
+.dt tbody tr:hover td{background:var(--sage-pale);}
+.lv-pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500;color:var(--white);}
+.st-pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;border:1px solid;}
+.st-未対応{border-color:#E8B86D;color:#A07830;background:#FEF8EE;}
+.st-フォロー予定{border-color:var(--sage);color:var(--moss);background:var(--sage-pale);}
+.st-対応済み{border-color:#A0A0A0;color:var(--mid);background:#F5F5F5;}
+.pager{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-top:1px solid var(--border);font-size:13px;color:var(--mid);flex-wrap:wrap;gap:8px;}
+.page-btns{display:flex;gap:4px;}
+.pg-btn{padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--white);cursor:pointer;font-size:12px;transition:all .2s;font-family:'Noto Sans JP',sans-serif;}
+.pg-btn.active{background:var(--moss);color:var(--white);border-color:var(--moss);}
+.pg-btn:hover:not(.active){border-color:var(--sage);}
+
+/* MODAL */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:500;align-items:center;justify-content:center;padding:20px;}
+.modal-ov.open{display:flex;animation:fadeIn .25s ease;}
+.modal-box{background:var(--white);border-radius:20px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.18);}
+.modal-hdr{padding:22px 26px 0;display:flex;justify-content:space-between;align-items:flex-start;}
+.modal-hdr h3{font-family:'Noto Serif JP',serif;font-size:19px;font-weight:400;}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--mid);padding:0;line-height:1;}
+.modal-body{padding:20px 26px 28px;}
+.m-row{display:flex;gap:8px;margin-bottom:7px;font-size:14px;}
+.m-lbl{color:var(--mid);width:120px;flex-shrink:0;font-size:13px;}
+.m-div{border:none;border-top:1px solid var(--border);margin:14px 0;}
+.m-bar-row{display:flex;align-items:center;gap:9px;font-size:13px;margin-bottom:7px;}
+.m-code{width:21px;height:21px;background:var(--sage-pale);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:var(--moss);flex-shrink:0;}
+.m-name{width:150px;flex-shrink:0;color:var(--mid);}
+.m-bw{flex:1;height:6px;background:var(--sage-pale);border-radius:3px;overflow:hidden;}
+.m-bar{height:100%;background:linear-gradient(90deg,var(--sage),var(--moss));border-radius:3px;}
+.m-val{width:24px;text-align:right;font-family:'DM Serif Display',serif;color:var(--moss);}
+.ans-grid{display:flex;flex-wrap:wrap;gap:5px;}
+.ans-chip{background:var(--sage-pale);border-radius:6px;padding:3px 8px;font-size:12px;}
+.ans-chip span{color:var(--mid);}
+
+/* ============================================================
+   PDF / PRINT
+============================================================ */
+@media print{
+  body > *{display:none !important;}
+  #pdf-zone{display:block !important;}
+  @page{margin:12mm 14mm;size:A4;}
+}
+#pdf-zone{display:none;}
+.pdf-page{max-width:680px;margin:0 auto;padding:28px;font-family:'Noto Sans JP',sans-serif;font-size:13px;}
+.pdf-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--moss);padding-bottom:14px;margin-bottom:20px;}
+.pdf-logo{font-family:'DM Serif Display',serif;font-size:20px;color:var(--moss);}
+.pdf-date-info{font-size:11px;color:var(--mid);text-align:right;line-height:1.6;}
+.pdf-name-big{font-family:'Noto Serif JP',serif;font-size:26px;font-weight:300;margin-bottom:2px;}
+.pdf-name-sub{font-size:12px;color:var(--mid);margin-bottom:20px;}
+.pdf-score-lv{display:flex;gap:16px;margin-bottom:18px;align-items:stretch;}
+.pdf-score-box{background:var(--sage-pale);border-radius:11px;padding:16px 20px;flex:1;}
+.pdf-score-box .lbl{font-size:10px;letter-spacing:.1em;color:var(--sage);font-weight:500;margin-bottom:6px;text-transform:uppercase;}
+.pdf-score-n{font-family:'DM Serif Display',serif;font-size:46px;color:var(--moss);line-height:1;}
+.pdf-score-sub{font-size:11px;color:var(--mid);}
+.pdf-lv-box{background:var(--white);border:1px solid var(--border);border-radius:11px;padding:16px 20px;flex:2;display:flex;align-items:center;gap:14px;}
+.pdf-lv-badge{width:56px;height:56px;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+.pdf-lv-badge .lv{font-size:9px;color:var(--white);letter-spacing:.1em;}
+.pdf-lv-badge .n{font-family:'DM Serif Display',serif;font-size:28px;color:var(--white);line-height:1;}
+.pdf-lv-info h4{font-family:'Noto Serif JP',serif;font-size:15px;font-weight:400;}
+.pdf-lv-info p{font-size:11px;color:var(--mid);}
+.pdf-str{background:var(--warm-pale);border:1px solid var(--warm-light);border-radius:11px;padding:14px 18px;margin-bottom:16px;}
+.pdf-str-lbl{font-size:10px;letter-spacing:.1em;color:var(--warm);font-weight:500;margin-bottom:5px;text-transform:uppercase;}
+.pdf-str-title{font-family:'Noto Serif JP',serif;font-size:15px;margin-bottom:5px;}
+.pdf-str-desc{font-size:12px;color:var(--mid);line-height:1.7;}
+.pdf-sec-lbl{font-size:10px;letter-spacing:.12em;color:var(--sage);font-weight:500;text-transform:uppercase;margin-bottom:10px;}
+.pdf-cat-row{display:flex;align-items:center;gap:9px;margin-bottom:7px;font-size:12px;}
+.pdf-code{width:19px;height:19px;background:var(--sage-pale);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:var(--moss);flex-shrink:0;}
+.pdf-cn{width:140px;color:var(--mid);flex-shrink:0;}
+.pdf-bw{flex:1;height:5px;background:var(--sage-pale);border-radius:3px;overflow:hidden;}
+.pdf-bar{height:100%;background:linear-gradient(90deg,var(--sage),var(--moss));border-radius:3px;}
+.pdf-cv{width:20px;text-align:right;font-family:'DM Serif Display',serif;color:var(--moss);}
+.pdf-lv-state{background:var(--sage-pale);border-radius:9px;padding:11px 14px;font-size:12px;margin-bottom:10px;line-height:1.6;}
+.pdf-desc{font-size:12px;color:var(--mid);line-height:1.7;margin-bottom:14px;}
+.pdf-advice{background:linear-gradient(135deg,var(--sage-pale),var(--warm-pale));border-radius:11px;padding:15px 18px;font-family:'Noto Serif JP',serif;font-size:13px;line-height:2;color:var(--charcoal);font-weight:300;}
+.pdf-footer{text-align:center;font-size:10px;color:var(--mid);margin-top:24px;padding-top:12px;border-top:1px solid var(--border);}
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+@media(max-width:640px){
+  .sidebar{display:none;}
+  .admin-main{padding:16px;}
+  .scale-grp{gap:4px;}
+  .sc-btn{padding:9px 1px;}
+  .sc-btn .v{font-size:17px;}
+  .sc-btn .l{font-size:8.5px;}
+  .cs-lbl{width:120px;font-size:11px;}
+  .res-cards{padding:0 14px 44px;}
+  .r-card{padding:20px 16px;}
+  .dt th:nth-child(n+5),.dt td:nth-child(n+5){display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- ==========================================
+     GLOBAL HEADER
+========================================== -->
+<header class="g-header" id="g-header">
+  <div class="g-logo" onclick="gotoTop()">Age<em>-</em>Well<span style="font-family:'Noto Sans JP';font-size:13px;color:var(--mid);font-weight:300;"> 診断</span></div>
+  <div class="g-nav" id="g-nav">
+    <button class="g-nav-btn" id="btn-admin-nav" onclick="gotoAdmin()">管理画面</button>
+  </div>
+</header>
+
+<!-- ==========================================
+     PAGE: TOP
+========================================== -->
+<div id="page-top" class="page active">
+  <section class="hero">
+    <div class="hero-tag">WELL-BEING ASSESSMENT</div>
+    <h1>あなたらしい<br><em>Age-Well</em>を見つける</h1>
+    <p class="hero-copy">挑戦と発見を通じて、<br>ポジティブに歳を重ねる自分の現在地を知りましょう。</p>
+    <div class="hero-meta">
+      <div><span class="num">35</span><span class="lbl">設問数</span></div>
+      <div><span class="num">5〜10</span><span class="lbl">所要分数</span></div>
+      <div><span class="num">7</span><span class="lbl">カテゴリ</span></div>
+    </div>
+    <button class="btn-p" onclick="showPage('intro')">診断をはじめる →</button>
+  </section>
+  <section class="top-feat-sec">
+    <div class="sec-label">WHAT YOU'LL DISCOVER</div>
+    <h2 class="sec-title">この診断でわかること</h2>
+    <div class="feat-grid">
+      <div class="feat-card"><div class="feat-icon">🌱</div><h3>Age-Wellレベル</h3><p>今の自分がどのステージにいるかを5段階で確認できます。</p></div>
+      <div class="feat-card"><div class="feat-icon">✨</div><h3>最強の強みタイプ</h3><p>7カテゴリの中で最も輝いている強みを発見します。</p></div>
+      <div class="feat-card"><div class="feat-icon">📊</div><h3>バランス分析</h3><p>7つの視点からあなたのAge-Wellをバランスよく可視化します。</p></div>
+      <div class="feat-card"><div class="feat-icon">🗺️</div><h3>次の一歩へのヒント</h3><p>現在地を起点に、前向きな気持ちで明日を迎えるアドバイスをお届けします。</p></div>
+    </div>
+  </section>
+  <section class="top-lv-sec">
+    <div class="top-lv-inner">
+      <div class="sec-label">LEVEL OVERVIEW</div>
+      <h2 class="sec-title">5つのAge-Wellレベル</h2>
+      <div class="lv-chips">
+        <div class="lv-chip"><span class="dot" style="background:var(--lv1)"></span>Lv.1 シーカー（探求準備期）</div>
+        <div class="lv-chip"><span class="dot" style="background:var(--lv2)"></span>Lv.2 ビギナー（初学者）</div>
+        <div class="lv-chip"><span class="dot" style="background:var(--lv3)"></span>Lv.3 ラーナー（学習者）</div>
+        <div class="lv-chip"><span class="dot" style="background:var(--lv4)"></span>Lv.4 プラクティショナー（実践者）</div>
+        <div class="lv-chip"><span class="dot" style="background:var(--lv5)"></span>Lv.5 エバンジェリスト（体現者）</div>
+      </div>
+    </div>
+  </section>
+  <section class="top-cta-sec">
+    <button class="btn-p" onclick="showPage('intro')">診断をはじめる →</button>
+    <p>※正解・不正解はありません。今の自分に近いものを直感でお選びください。</p>
+  </section>
+</div>
+
+<!-- ==========================================
+     PAGE: INTRO
+========================================== -->
+<div id="page-intro" class="page">
+  <div class="intro-wrap">
+    <button class="back-btn" onclick="showPage('top')">← トップへ</button>
+    <div class="sec-label">BEFORE YOU START</div>
+    <h2 class="intro-h2" style="margin-bottom:32px;">この診断について</h2>
+    <div class="intro-what">
+      <div class="intro-what-h">この診断でわかること</div>
+      <div class="intro-item"><span class="badge">レベル</span><span>合計スコアから、あなたのAge-Wellレベル（1〜5）がわかります</span></div>
+      <div class="intro-item" style="margin-top:9px"><span class="badge">強み</span><span>7カテゴリで最も高いカテゴリが「最強の強みタイプ」として判定されます</span></div>
+    </div>
+    <div style="margin-bottom:26px">
+      <div style="font-size:12px;letter-spacing:.1em;color:var(--moss);font-weight:500;margin-bottom:12px;text-transform:uppercase;">回答方法</div>
+      <p style="font-size:13px;color:var(--mid);margin-bottom:13px;font-weight:300;">各設問について今の自分にどれくらいあてはまるかを5段階で選んでください。</p>
+      <div class="scale-prev">
+        <div class="sp-item"><span class="sp-val">1</span><span class="sp-desc">とても<br>あてはまらない</span></div>
+        <div class="sp-item"><span class="sp-val">2</span><span class="sp-desc">あまり<br>あてはまらない</span></div>
+        <div class="sp-item"><span class="sp-val">3</span><span class="sp-desc">どちらとも<br>いえない</span></div>
+        <div class="sp-item"><span class="sp-val">4</span><span class="sp-desc">やや<br>あてはまる</span></div>
+        <div class="sp-item"><span class="sp-val">5</span><span class="sp-desc">とても<br>あてはまる</span></div>
+      </div>
+    </div>
+    <div class="intro-note">💡 正解・不正解はありません。「こうあるべき」ではなく、<strong>今の自分に近いもの</strong>を直感でお選びください。</div>
+    <button class="btn-p" onclick="showPage('userinfo')" style="width:100%;justify-content:center;">次へ（お名前入力）→</button>
+  </div>
+</div>
+
+<!-- ==========================================
+     PAGE: USER INFO
+========================================== -->
+<div id="page-userinfo" class="page">
+  <div class="ui-wrap">
+    <button class="back-btn" onclick="showPage('intro')">← 戻る</button>
+    <div class="ui-step">STEP 1 of 2 — お客様情報</div>
+    <h2 class="ui-h2">お名前・メールアドレスの入力</h2>
+    <p class="ui-sub">診断結果と紐づけるため、以下の情報をご入力ください。</p>
+    <div class="f-group">
+      <label class="f-label">お名前<span class="req">必須</span></label>
+      <input type="text" id="inp-name" class="f-input" placeholder="例：山田 花子" autocomplete="name" oninput="clrErr('name')">
+      <div class="f-error" id="ferr-name">お名前を入力してください</div>
+    </div>
+    <div class="f-group">
+      <label class="f-label">メールアドレス<span class="req">必須</span></label>
+      <input type="email" id="inp-email" class="f-input" placeholder="例：hanako@example.com" autocomplete="email" oninput="clrErr('email')">
+      <div class="f-error" id="ferr-email">正しいメールアドレスを入力してください</div>
+    </div>
+    <div class="consent-box">📋 ご入力いただいた情報は、診断結果の表示および今後のサポートのご案内のみに使用します。第三者への提供は行いません。</div>
+    <button class="btn-p" onclick="validateUserInfo()" style="width:100%;justify-content:center;">診断スタート →</button>
+  </div>
+</div>
+
+<!-- ==========================================
+     PAGE: QUIZ
+========================================== -->
+<div id="page-quiz" class="page">
+  <div class="quiz-prog-bar">
+    <div class="quiz-prog-info">
+      <span class="qpi-cat" id="qpi-cat">A：活力とセルフケア</span>
+      <span class="qpi-cnt" id="qpi-cnt">0 / 35</span>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+  <div class="quiz-content" id="quiz-content"></div>
+</div>
+
+<!-- ==========================================
+     PAGE: RESULT
+========================================== -->
+<div id="page-result" class="page">
+  <div class="res-hero">
+    <div class="res-name" id="rn-name"></div>
+    <div class="res-label">YOUR RESULT</div>
+    <h2 class="res-h2" id="res-h2">診断が完了しました</h2>
+    <div class="res-score" id="res-score">—</div>
+    <div class="res-score-lbl">/ 175点</div>
+  </div>
+  <div class="res-cards">
+    <div class="r-card">
+      <div class="r-card-lbl">AGE-WELL LEVEL</div>
+      <div class="lv-disp">
+        <div class="lv-badge" id="r-lv-badge"><span class="lv">Lv.</span><span class="n" id="r-lv-n">—</span></div>
+        <div class="lv-info"><h3 id="r-lv-title">—</h3><span class="sn" id="r-lv-sn">—</span></div>
+      </div>
+      <div class="lv-state" id="r-lv-state">—</div>
+      <div class="lv-desc" id="r-lv-desc">—</div>
+    </div>
+    <div class="r-card">
+      <div class="r-card-lbl">あなたの最強の強みタイプ</div>
+      <div class="str-disp">
+        <div class="str-icon" id="r-str-icon">🌟</div>
+        <div class="str-info"><div class="sc" id="r-str-cat">—</div><h3 id="r-str-title">—</h3></div>
+      </div>
+      <div class="str-desc" id="r-str-desc">—</div>
+    </div>
+    <div class="r-card">
+      <div class="r-card-lbl">カテゴリー別スコア</div>
+      <div class="chart-wrap"><canvas id="radarChart"></canvas></div>
+      <div id="cat-bars"></div>
+    </div>
+    <div class="advice-card">
+      <div class="r-card-lbl" style="margin-bottom:13px;">明日へのヒント</div>
+      <p class="advice-text" id="r-advice">—</p>
+    </div>
+    <div class="res-cta">
+      <h3>次のステップへ</h3>
+      <div class="cta-btns">
+        <button class="btn-p" style="padding:12px 28px;font-size:14px;" onclick="resetAll()">もう一度診断する</button>
+        <button class="btn-pdf" onclick="doPrint()">📄 PDFで結果を保存する</button>
+        <button class="btn-s">Age-Well Designerに相談する</button>
+        <button class="btn-s">家族と一緒に診断する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================
+     PAGE: LOGIN
+========================================== -->
+<div id="page-login" class="page">
+  <div class="login-wrap">
+    <div class="login-logo">Age<em>-</em>Well</div>
+    <p class="login-sub">管理画面にログインしてください</p>
+    <div class="login-card">
+      <h2>管理者ログイン</h2>
+      <div class="login-err" id="login-err">IDまたはパスワードが正しくありません</div>
+      <div class="f-group">
+        <label class="f-label">メールアドレス（ID）</label>
+        <input type="email" id="login-id" class="f-input" placeholder="メールアドレス" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="f-group">
+        <label class="f-label">パスワード</label>
+        <div class="pw-wrap">
+          <input type="password" id="login-pw" class="f-input" placeholder="••••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+          <button class="pw-toggle" onclick="togglePw()" title="表示切替">👁</button>
+        </div>
+      </div>
+      <button class="btn-p" onclick="doLogin()" style="width:100%;justify-content:center;margin-top:4px;">ログイン</button>
+    </div>
+    <button class="back-btn" style="margin-top:20px;" onclick="showPage('top')">← 診断サイトへ戻る</button>
+  </div>
+</div>
+
+<!-- ==========================================
+     PAGE: ADMIN
+========================================== -->
+<div id="page-admin" class="page">
+  <div class="admin-body">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sb-label">OVERVIEW</div>
+      <div class="sb-item active" id="sb-dashboard" onclick="showAdmin('dashboard')"><span class="ico">📊</span>ダッシュボード</div>
+      <div class="sb-label">DATA</div>
+      <div class="sb-item" id="sb-list" onclick="showAdmin('list')"><span class="ico">📋</span>回答一覧</div>
+      <hr class="sb-divider">
+      <div class="sb-label">EXPORT</div>
+      <div class="sb-item" onclick="exportCSV()"><span class="ico">⬇️</span>CSVダウンロード</div>
+      <hr class="sb-divider">
+      <div class="sb-item" onclick="doLogout()" style="color:#A06050;"><span class="ico">🚪</span>ログアウト</div>
+    </nav>
+    <!-- Main -->
+    <main class="admin-main">
+      <!-- DASHBOARD -->
+      <div class="a-sec active" id="a-dashboard">
+        <div class="dash-title">ダッシュボード</div>
+        <div class="dash-sub" id="dash-sub">—</div>
+        <div class="kpi-grid" id="kpi-grid"></div>
+        <div class="chart-grid">
+          <div class="ch-card"><h4>レベル別分布</h4><canvas id="c-level"></canvas></div>
+          <div class="ch-card"><h4>強みタイプ別分布</h4><canvas id="c-strength"></canvas></div>
+          <div class="ch-card"><h4>カテゴリ別平均スコア</h4><canvas id="c-radar"></canvas></div>
+          <div class="ch-card"><h4>回答数推移（直近30日）</h4><canvas id="c-trend"></canvas></div>
+        </div>
+        <h4 style="font-size:14px;font-weight:500;margin-bottom:11px;">直近の回答者</h4>
+        <div class="tbl-wrap">
+          <table class="dt">
+            <thead><tr><th>回答日時</th><th>氏名</th><th>スコア</th><th>レベル</th><th>強みタイプ</th></tr></thead>
+            <tbody id="recent-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- LIST -->
+      <div class="a-sec" id="a-list">
+        <div class="dash-title">回答一覧</div>
+        <div class="dash-sub">全回答データの確認・検索・絞り込み</div>
+        <div class="tbl-wrap">
+          <div class="tbl-toolbar">
+            <input type="text" class="tbl-search" id="tbl-search" placeholder="🔍 氏名・メールで検索…" oninput="filterTbl()">
+            <select class="tbl-select" id="flt-lv" onchange="filterTbl()">
+              <option value="">全レベル</option>
+              <option value="1">Lv.1 シーカー</option>
+              <option value="2">Lv.2 ビギナー</option>
+              <option value="3">Lv.3 ラーナー</option>
+              <option value="4">Lv.4 プラクティショナー</option>
+              <option value="5">Lv.5 エバンジェリスト</option>
+            </select>
+            <select class="tbl-select" id="flt-str" onchange="filterTbl()">
+              <option value="">全強みタイプ</option>
+              <option value="A">A：自分をいたわる達人</option>
+              <option value="B">B：幸せの再発見家</option>
+              <option value="C">C：つながりの魔法使い</option>
+              <option value="D">D：好奇心あふれる冒険家</option>
+              <option value="E">E：フラットな賢者</option>
+              <option value="F">F：日常の芸術家</option>
+              <option value="G">G：人生を愛でる人</option>
+            </select>
+            <button class="btn-csv" onclick="exportCSV()">⬇️ CSV出力</button>
+          </div>
+          <table class="dt" id="main-dt">
+            <thead>
+              <tr>
+                <th id="th-date" onclick="sortTbl('submittedAt')">回答日時</th>
+                <th id="th-name" onclick="sortTbl('name')">氏名</th>
+                <th>メール</th>
+                <th id="th-score" onclick="sortTbl('totalScore')">スコア</th>
+                <th id="th-lv" onclick="sortTbl('level')">レベル</th>
+                <th>強みタイプ</th>
+                <th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th>
+              </tr>
+            </thead>
+            <tbody id="main-tbody"></tbody>
+          </table>
+          <div class="pager">
+            <span id="pager-info">—</span>
+            <div class="page-btns" id="page-btns"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-ov" id="modal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h3 id="modal-title">—</h3>
+      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- PDF ZONE -->
+<div id="pdf-zone">
+  <div class="pdf-page">
+    <div class="pdf-header">
+      <div><div class="pdf-logo">Age-Well 診断レポート</div><div style="font-size:11px;color:var(--mid);margin-top:3px;">AgeWellJapan</div></div>
+      <div class="pdf-date-info" id="pdf-date-info">—</div>
+    </div>
+    <div class="pdf-name-big" id="pdf-name-big">—</div>
+    <div class="pdf-name-sub">の診断結果レポート</div>
+    <div class="pdf-score-lv">
+      <div class="pdf-score-box">
+        <div class="lbl">TOTAL SCORE</div>
+        <div class="pdf-score-n" id="pdf-score-n">—</div>
+        <div class="pdf-score-sub">/ 175点満点</div>
+      </div>
+      <div class="pdf-lv-box">
+        <div class="pdf-lv-badge" id="pdf-lv-badge"><span class="lv">Lv.</span><span class="n" id="pdf-lv-n">—</span></div>
+        <div class="pdf-lv-info"><h4 id="pdf-lv-title">—</h4><p id="pdf-lv-sub">—</p></div>
+      </div>
+    </div>
+    <div class="pdf-str">
+      <div class="pdf-str-lbl">あなたの最強の強みタイプ</div>
+      <div class="pdf-str-title" id="pdf-str-title">—</div>
+      <div class="pdf-str-desc" id="pdf-str-desc">—</div>
+    </div>
+    <div class="pdf-sec-lbl">カテゴリー別スコア</div>
+    <div id="pdf-cat-bars"></div>
+    <div style="margin-top:14px">
+      <div class="pdf-sec-lbl">レベル状態・解説</div>
+      <div class="pdf-lv-state" id="pdf-lv-state">—</div>
+      <div class="pdf-desc" id="pdf-lv-desc">—</div>
+    </div>
+    <div class="pdf-advice" id="pdf-advice">—</div>
+    <div class="pdf-footer">Age-Well診断 by AgeWellJapan｜このレポートはAge-Well診断の結果を基に生成されました</div>
+  </div>
+</div>
+
+<!-- ==========================================
+     JAVASCRIPT
+========================================== -->
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+'use strict';
+
+/* ============================================================
+   GAS 設定
+   ▼ デプロイ後に取得したウェブアプリURLをここに貼る
+============================================================ */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzJvnqzOHqTyFDiSbCcpyRPsxyIPlU0NsaC3br2SvpRvtQ6NIZkhiftZEAr7oAm4-4k7A/exec';
+// 例: 'https://script.google.com/macros/s/AKfycbxXXXXXXXX/exec'
+// GAS_URL が未設定の場合はモックデータで動作します（デモモード）
+
+/* ============================================================
+   AUTH
+============================================================ */
+const AUTH = { id:'info@miharu-inc.jp', pw:'MM20200110' };
+const LS_KEY = 'agewell_admin_auth';
+
+function isLoggedIn(){ return localStorage.getItem(LS_KEY) === '1'; }
+function doLogin(){
+  const id = document.getElementById('login-id').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  const err = document.getElementById('login-err');
+  if(id === AUTH.id && pw === AUTH.pw){
+    localStorage.setItem(LS_KEY,'1');
+    err.classList.remove('show');
+    enterAdmin();
+  } else {
+    err.classList.add('show');
+    document.getElementById('login-id').classList.add('err');
+    document.getElementById('login-pw').classList.add('err');
+    setTimeout(()=>{ document.getElementById('login-id').classList.remove('err'); document.getElementById('login-pw').classList.remove('err'); },2000);
+  }
+}
+function doLogout(){
+  localStorage.removeItem(LS_KEY);
+  updateHeader(false);
+  showPage('top');
+}
+function togglePw(){
+  const inp = document.getElementById('login-pw');
+  inp.type = inp.type==='password' ? 'text' : 'password';
+}
+function gotoAdmin(){
+  if(isLoggedIn()){ enterAdmin(); }
+  else { showPage('login'); }
+}
+async function enterAdmin(){
+  updateHeader(true);
+  showPage('admin');
+  if(!dbLoaded){
+    await loadDBFromGAS();   // GASからデータ取得してから描画
+  }
+  showAdmin('dashboard');
+}
+function updateHeader(isAdmin){
+  const btn = document.getElementById('btn-admin-nav');
+  btn.classList.toggle('admin-active', isAdmin);
+  btn.textContent = isAdmin ? '管理画面 ✓' : '管理画面';
+}
+
+/* ============================================================
+   MASTER DATA
+============================================================ */
+const CATS = [
+  { code:'A', name:'活力とセルフケア', sTitle:'自分をいたわる達人', icon:'🌿',
+    sDesc:'自分の体と心の声を聴くのが上手。土台が安定しています。無理をせず自分を慈しむ姿勢は、周囲に安心感と健やかさを伝播させます。',
+    qs:['朝起きたときに、「今日も活動しよう」という元気が湧いてきますか？','睡眠や休息をとることで、心身ともにしっかりリフレッシュできていますか？','自分の体調の変化に気づき、無理をせず自分をいたわることができていますか？','自分の良いところも、加齢による変化も、含めて「今の自分」を肯定していますか？','未来に対して不安になりすぎず、「何が起きるか楽しみだ」という期待感がありますか？']
+  },
+  { code:'B', name:'レジリエンスと転換力', sTitle:'幸せの再発見家', icon:'🔄',
+    sDesc:'どんなピンチも「人生のネタ」に変える、しなやかな強さがあります。喪失を成長の糧に転換できる力は、困難な時代を生き抜く最高の武器です。',
+    qs:['できないことが増えても、「その分、経験や知識が豊かになった」と思えますか？','困難や悲しいことがあっても、そこから新しい意味を見出して立ち直れますか？','予想外の出来事や失敗を、むしろ「人生のネタ」として面白がれますか？','失敗を恐れて動かないより、「これくらいなら大丈夫」と割り切って挑戦できますか？','過去の地位や栄光にこだわらず、今のありのままの自分を楽しんでいますか？']
+  },
+  { code:'C', name:'つながりとジェネラティビティ', sTitle:'つながりの魔法使い', icon:'🤝',
+    sDesc:'あなたがいるだけで場が和む。周りと幸せを増やす天才です。対話を通じてポジティブな意味付けを広め、社会の孤立を防ぐ希望となります。',
+    qs:['家族や友人、地域の中に、自分が安心していられる「居場所」がありますか？','困ったときや弱ったときに、心から信頼して頼れる人が周囲にいますか？','自分の経験や知恵を、次の世代や誰かのために役立てることに幸せを感じますか？','若い世代の活躍や成長を、見返りを求めず心から応援できますか？','偶然出会った人や、自分と違う考えを持つ人と協力して何かをするのが好きですか？']
+  },
+  { code:'D', name:'知的好奇心とアップデート', sTitle:'好奇心あふれる冒険家', icon:'🧭',
+    sDesc:'テクノロジーも若者の感性も「面白そう！」と取り入れ、進化し続ける人です。未知を恐れず軽やかに挑戦する姿は、世代を超えた共創の架け橋になります。',
+    qs:['年齢を理由に諦めず、新しいことを学ぶことにワクワクしていますか？','AIやデジタルツールを、生活を豊かにする「頼もしい相棒」として取り入れていますか？','年下の人から新しい流行や価値観を教わることを、素直に楽しめていますか？','時代の変化に合わせて、自分の考え方や暮らし方を柔軟に変えていくことができますか？','「あれがない」と嘆くより、今ある人脈や特技で何ができるかを考えて動いていますか？']
+  },
+  { code:'E', name:'謙虚さとフラットな姿勢', sTitle:'フラットな賢者', icon:'🪷',
+    sDesc:'威張らず、誰からも素直に学べる。その姿勢が皆の憧れです。経験に溺れず常に謙虚な対話を重んじる姿は、真の成熟を体現しています。',
+    qs:['過去の肩書きや年齢に関係なく、誰に対しても敬意を持って接していますか？','知らないことや分からないことを、素直に「教えてください」と言えますか？','自分の失敗や「老い」を、ユーモアを持って笑いに変える余裕がありますか？','「自分には、まだ世の中に良い影響を与える力がある」という自信がありますか？','自分の意見を押し付けるのではなく、相手の話を深く聴こうと努めていますか？']
+  },
+  { code:'F', name:'環境と活動の充実', sTitle:'日常の芸術家', icon:'🎨',
+    sDesc:'自分の「好き」を大切にし、日々の暮らしを豊かに彩っています。身近な自然や文化に価値を見出し、共有する感性が世界を美しく照らします。',
+    qs:['時間を忘れて夢中になれる、自分にとって大切な趣味や活動がありますか？','日々の暮らしの中で、小さくても「やり遂げた」という喜びを感じる機会がありますか？','贅沢でなくても、日々の生活を営む上での金銭的な安心感を持てていますか？','今住んでいる場所や地域に対して、愛着や心地よさを感じていますか？','日常の中で自然の豊かさを感じ、リラックスできる時間を持っていますか？']
+  },
+  { code:'G', name:'精神の成熟と平安', sTitle:'人生を愛でる人', icon:'🌸',
+    sDesc:'自分の人生を丸ごと愛し、今この瞬間に感謝できる成熟した精神の持ち主。過去を受け入れ今を肯定する姿は、周囲の心に平穏と感謝の種をまきます。',
+    qs:['何かに追われるのではなく、自分のペースで時間を楽しむ余裕がありますか？','日常の何気ない出来事の中に、小さな幸せや感謝を見つけられていますか？','日々の生活の中で、些細な「美しさ」や「心地よさ」を愛でる感性を大切にしていますか？','自分の内面と丁寧に向き合い、心の平穏を保つ自分なりの方法を持っていますか？','「いろいろあったけれど、良い人生だ」と、今この瞬間を丸ごと愛せていますか？']
+  }
+];
+const SCALE_LBL = ['とてもあてはまらない','あまりあてはまらない','どちらともいえない','ややあてはまる','とてもあてはまる'];
+const LVS = [
+  { lv:1, min:35, max:69, color:'#BFA89A', title:'Age-Well シーカー', sub:'探求準備期',
+    state:'元気が不足気味で、新しいことに挑戦する意欲が湧きにくい状態です。',
+    desc:'「周りに迷惑をかけてはいけない」と自分を厳しく律しすぎて、可能性を狭めているかもしれません。今は大きな挑戦をする必要はありません。窓の外の景色が変わったことに気づいたり、身近なモノの良さを再発見したりすることから始めましょう。',
+    advice:'今日、ひとつだけ「心地よい」と感じることを探してみましょう。小さな発見が、あなたのAge-Wellの旅のはじまりです。あなたのペースで、少しずつ。'
+  },
+  { lv:2, min:70, max:99, color:'#A8B8A0', title:'Age-Well ビギナー', sub:'初学者',
+    state:'変化に対して少し守りに入っており、「諦め」の気持ちが強くなり始めている状態です。',
+    desc:'誕生日や新しい出来事に対して、ついネガティブな捉え方をしてしまいがちかもしれません。自分一人で解決しようとせず、まずは誰かと何気ない「おしゃべり」をすることから始めてみませんか。',
+    advice:'誰かと話すことが、一番の薬です。「最近どう？」と声をかけるだけでいい。あなたのその一言が、明るい日常へのきっかけになります。'
+  },
+  { lv:3, min:100, max:129, color:'#82A88A', title:'Age-Well ラーナー', sub:'学習者',
+    state:'安定していますが、時折「今のままでいいのかな」と迷いやブレーキがかかる状態です。',
+    desc:'日常の小さな幸せに気づく感性は持っています。誰かにその発見を話したり、分かち合ったりすることで、毎日はもっと輝き出します。「完璧にやろう」と思わず、今の自分に合格点を出してあげることが、次の一歩へ繋がります。',
+    advice:'あなたはすでに多くのものを持っています。今日、誰かに「最近こんな良いことがあってね」と話しかけてみましょう。'
+  },
+  { lv:4, min:130, max:154, color:'#5D8F67', title:'Age-Well プラクティショナー', sub:'実践者',
+    state:'前向きな考え方が習慣になっており、自分らしく毎日を楽しめている状態です。',
+    desc:'「もう歳だから」という言葉に縛られず、軽やかに新しいことへ踏み出せています。テクノロジーに対しても、怖さより「楽しさ」に目を向ける力があります。',
+    advice:'あなたのその前向きさは、周囲に確実に伝わっています。次のステップは、あなたの「やり方」を誰かに伝えること。'
+  },
+  { lv:5, min:155, max:175, color:'#3D6E45', title:'Age-Well エバンジェリスト', sub:'体現者',
+    state:'心身ともに最高に活き活きとしており、周りにも元気を分かち合えている状態です。',
+    desc:'日々の些細な変化を「面白い！」と発見し、それを誰かと共有して喜び合える達人です。スマホなどの新しい道具も自分の味方にして、常に自分を新しくアップデートし続けています。',
+    advice:'あなたはAge-Wellを体現している存在です。その輝きを惜しみなく周囲に分かち合ってください。あなたの笑顔ひとつが、誰かのAge-Wellの旅を照らす灯台になります。'
+  }
+];
+
+/* ============================================================
+   MOCK DATA GENERATION (100件)
+============================================================ */
+const NF=['田中 由美子','佐藤 花子','鈴木 恵子','高橋 幸子','伊藤 洋子','山田 和子','渡辺 裕子','中村 靖子','小林 節子','加藤 典子','吉田 弘子','山口 千恵子','松本 直美','井上 三枝','木村 順子','林 澄子','清水 富美子','山崎 礼子','池田 美代子','阿部 千代','岡村 智恵','西田 雅子','中野 美智子','橋本 洋子','石田 幸恵','小野 真弓','杉山 文子','田村 喜代','斎藤 静子','宮崎 光子'];
+const NM=['佐藤 正雄','田中 守','鈴木 和夫','高橋 茂','伊藤 博','山田 昭','渡辺 修','中村 勉','小林 清','加藤 武','吉田 健一','山口 進','松本 繁','井上 勝','木村 弘','林 幸男','清水 隆','山崎 忠','池田 信夫','阿部 義雄','岡村 誠二','西田 勇','中野 哲','橋本 輝','石田 武志','小野 明','杉山 賢','田村 猛','斎藤 光','宮崎 充'];
+const DOMS=['gmail.com','yahoo.co.jp','docomo.ne.jp','icloud.com','outlook.jp'];
+const STATS=['未対応','フォロー予定','対応済み'];
+function ri(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function wLv(){const r=Math.random();if(r<.07)return 0;if(r<.22)return 1;if(r<.52)return 2;if(r<.82)return 3;return 4;}
+function makeMock(){
+  const out=[];const now=new Date();
+  for(let i=0;i<100;i++){
+    const fem=Math.random()>.45;
+    const nm=(fem?NF:NM)[i%(fem?NF.length:NM.length)];
+    const lvIdx=wLv();const lv=LVS[lvIdx];
+    const total=ri(lv.min,lv.max);
+    const raw=CATS.map(()=>ri(3,25));
+    const rsum=raw.reduce((a,b)=>a+b,0);
+    const cs=raw.map(s=>Math.max(1,Math.min(25,Math.round(s/rsum*total))));
+    let diff=total-cs.reduce((a,b)=>a+b,0);cs[0]=Math.max(1,Math.min(25,cs[0]+diff));
+    const mxS=Math.max(...cs);const topI=cs.indexOf(mxS);
+    const dago=ri(0,59);
+    const dt=new Date(now-dago*86400000-ri(0,86399)*1000);
+    const ans={};
+    CATS.forEach((_,ci)=>{let rem=cs[ci];for(let q=0;q<5;q++){const qn=ci*5+q+1;if(q<4){const v=Math.max(1,Math.min(5,Math.round(rem/(5-q))));ans[qn]=v;rem-=v;}else ans[qn]=Math.max(1,Math.min(5,rem));}});
+    const emailUser=nm.replace(/\s/g,'').replace(/[^\x00-\x7F]/g,'')+'_'+(i+1);
+    out.push({
+      id:'R'+(1000+i),name:nm,
+      email:emailUser.toLowerCase()+'@'+DOMS[i%DOMS.length],
+      submittedAt:dt.toISOString(),
+      totalScore:total,level:lv.lv,levelTitle:lv.title,
+      topCode:CATS[topI].code,topTitle:CATS[topI].sTitle,
+      cs:{A:cs[0],B:cs[1],C:cs[2],D:cs[3],E:cs[4],F:cs[5],G:cs[6]},
+      ans,status:STATS[ri(0,2)]
+    });
+  }
+  return out.sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt));
+}
+// DB は空で初期化 → 管理画面アクセス時に GAS から取得
+// GAS_URL 未設定時はモックデータをフォールバックとして使用
+let DB = [];
+let dbLoaded = false;
+
+/* ============================================================
+   PAGE NAVIGATION
+============================================================ */
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function gotoTop(){showPage('top');}
+
+/* ============================================================
+   USER INFO
+============================================================ */
+let curUser={name:'',email:''};
+function clrErr(f){
+  document.getElementById('inp-'+f).classList.remove('err');
+  document.getElementById('ferr-'+f).classList.remove('show');
+}
+function validateUserInfo(){
+  const n=document.getElementById('inp-name').value.trim();
+  const e=document.getElementById('inp-email').value.trim();
+  let ok=true;
+  if(!n){document.getElementById('inp-name').classList.add('err');document.getElementById('ferr-name').classList.add('show');ok=false;}
+  if(!e||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){document.getElementById('inp-email').classList.add('err');document.getElementById('ferr-email').classList.add('show');ok=false;}
+  if(!ok)return;
+  curUser={name:n,email:e};
+  startQuiz();
+}
+
+/* ============================================================
+   QUIZ
+============================================================ */
+let ans={};
+let catIdx=0;
+let radarInst=null;
+
+function startQuiz(){ans={};catIdx=0;showPage('quiz');renderCat(0);}
+function resetAll(){document.getElementById('inp-name').value='';document.getElementById('inp-email').value='';showPage('top');}
+
+function renderCat(ci){
+  const cat=CATS[ci];
+  const done=Object.keys(ans).length;
+  document.getElementById('qpi-cat').textContent=cat.code+'：'+cat.name;
+  document.getElementById('qpi-cnt').textContent=done+' / 35';
+  document.getElementById('prog-fill').style.width=(done/35*100)+'%';
+  let h=`<div class="cat-hdr"><div class="cat-badge">${cat.code}</div><div class="cat-hdr-info"><h2>${cat.name}</h2><p>設問 ${ci*5+1}〜${ci*5+5} / 35</p></div></div>`;
+  cat.qs.forEach((q,qi)=>{
+    const qn=ci*5+qi+1;
+    h+=`<div class="q-card ${ans[qn]?'answered':''}" id="qc-${qn}">
+      <div class="q-num">Q${qn}</div>
+      <p class="q-text">${q}</p>
+      <div class="scale-grp">${[1,2,3,4,5].map(v=>`<button class="sc-btn ${ans[qn]===v?'sel':''}" onclick="selAns(${qn},${v},${ci})" title="${SCALE_LBL[v-1]}"><span class="v">${v}</span><span class="l">${SCALE_LBL[v-1]}</span></button>`).join('')}</div>
+    </div>`;
+  });
+  h+='<div class="quiz-nav">';
+  if(ci>0)h+=`<button class="btn-s" onclick="prevCat(${ci})">← 前へ</button>`;
+  if(ci<6)h+=`<button class="btn-p" onclick="nextCat(${ci})" style="margin-left:auto;padding:12px 28px;font-size:14px;">次へ →</button>`;
+  else h+=`<button class="btn-p" onclick="submitQuiz()" style="margin-left:auto;padding:12px 28px;font-size:14px;">結果を見る ✨</button>`;
+  h+='</div>';
+  document.getElementById('quiz-content').innerHTML=h;
+}
+
+function selAns(qn,v,ci){
+  ans[qn]=v;
+  const c=document.getElementById('qc-'+qn);
+  if(c){c.classList.add('answered');c.classList.remove('e');c.querySelectorAll('.sc-btn').forEach((b,i)=>b.classList.toggle('sel',i+1===v));}
+  const cnt=Object.keys(ans).length;
+  document.getElementById('qpi-cnt').textContent=cnt+' / 35';
+  document.getElementById('prog-fill').style.width=(cnt/35*100)+'%';
+}
+function prevCat(ci){catIdx=ci-1;renderCat(catIdx);window.scrollTo({top:0,behavior:'smooth'});}
+function nextCat(ci){
+  const s=ci*5+1,miss=[];
+  for(let i=s;i<s+5;i++)if(!ans[i])miss.push(i);
+  if(miss.length){miss.forEach(q=>{const c=document.getElementById('qc-'+q);if(c){c.classList.add('e');setTimeout(()=>c.classList.remove('e'),600);}});document.getElementById('qc-'+miss[0]).scrollIntoView({behavior:'smooth',block:'center'});return;}
+  catIdx=ci+1;renderCat(catIdx);window.scrollTo({top:0,behavior:'smooth'});
+}
+async function submitQuiz(){
+  const miss=[];
+  for(let i=31;i<=35;i++)if(!ans[i])miss.push(i);
+  if(miss.length){miss.forEach(q=>{const c=document.getElementById('qc-'+q);if(c){c.classList.add('e');setTimeout(()=>c.classList.remove('e'),600);}});document.getElementById('qc-'+miss[0]).scrollIntoView({behavior:'smooth',block:'center'});return;}
+  showResult();        // 先に結果を表示
+  saveToDB();          // GAS保存はバックグラウンドで（awaitしない→UIをブロックしない）
+}
+
+async function saveToDB(){
+  const cs=CATS.map((_,ci)=>{let s=0;for(let i=1;i<=5;i++)s+=(ans[ci*5+i]||0);return s;});
+  const tot=cs.reduce((a,b)=>a+b,0);
+  const lv=LVS.find(l=>tot>=l.min&&tot<=l.max)||LVS[4];
+  const mxS=Math.max(...cs);const topI=cs.indexOf(mxS);
+
+  // ① ローカル DB にも即時追加（同セッション中の管理画面に即反映）
+  const localEntry={
+    id:'R_pending_'+Date.now(),name:curUser.name,email:curUser.email,
+    submittedAt:new Date().toISOString(),
+    totalScore:tot,level:lv.lv,levelTitle:lv.title,
+    topCode:CATS[topI].code,topTitle:CATS[topI].sTitle,
+    cs:{A:cs[0],B:cs[1],C:cs[2],D:cs[3],E:cs[4],F:cs[5],G:cs[6]},
+    ans:{...ans},status:'未対応',memo:''
+  };
+  DB.unshift(localEntry);
+
+  // ② GAS未設定ならここで終了（デモモード）
+  if(!GAS_URL||GAS_URL==='YOUR_GAS_URL_HERE'){
+    console.log('[デモ] GAS未設定のためローカルのみ保存');
+    return;
+  }
+
+  // ③ GAS へ POST送信（no-cors + text/plain でCORSを回避）
+  // GitHub Pages→GASはContent-Type:application/jsonでpreflightが発生しCORSエラーになる
+  // GASの標準的な対処法: mode:no-cors + Content-Type:text/plain で送信する
+  const payload = JSON.stringify({
+    action:'submit',
+    name:curUser.name, email:curUser.email,
+    totalScore:tot, level:lv.lv, levelTitle:lv.title,
+    topCode:CATS[topI].code, topTitle:CATS[topI].sTitle,
+    cs:{A:cs[0],B:cs[1],C:cs[2],D:cs[3],E:cs[4],F:cs[5],G:cs[6]},
+    ans:{...ans}
+  });
+  try{
+    await fetch(GAS_URL, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body:    payload
+    });
+    console.log('[GAS] 診断データ送信完了');
+  }catch(err){
+    console.warn('[GAS] POST失敗:', err.message);
+  }
+}
+
+/* ============================================================
+   loadDBFromGAS — 管理画面起動時に GAS から一覧取得
+============================================================ */
+async function loadDBFromGAS(){
+  // GAS未設定 → モックデータで動作
+  if(!GAS_URL||GAS_URL==='YOUR_GAS_URL_HERE'){
+    if(DB.length===0) DB=makeMock();
+    dbLoaded=true;
+    return;
+  }
+  showAdminLoading(true);
+  try{
+    const res=await fetch(GAS_URL+'?action=list&limit=500');
+    const json=await res.json();
+    if(json.status==='ok'&&Array.isArray(json.data)){
+      // GAS取得データをマージ（pendingは残す）
+      const pending=DB.filter(r=>r.id.startsWith('R_pending_'));
+      DB=[...pending,...json.data];
+      dbLoaded=true;
+      console.log('[GAS] 一覧取得:',json.data.length+'件');
+    }else{
+      throw new Error(json.message||'list error');
+    }
+  }catch(err){
+    console.warn('[GAS] 取得失敗 → モック表示:',err.message);
+    if(DB.length===0) DB=makeMock();
+    dbLoaded=true;
+  }finally{
+    showAdminLoading(false);
+  }
+}
+
+/* ローディングオーバーレイ */
+function showAdminLoading(show){
+  let el=document.getElementById('admin-loading');
+  if(!el){
+    el=document.createElement('div');
+    el.id='admin-loading';
+    el.style.cssText='position:fixed;inset:0;background:rgba(255,255,255,.82);z-index:999;display:none;align-items:center;justify-content:center;';
+    el.innerHTML='<div style="text-align:center;font-family:\'Noto Sans JP\',sans-serif;"><div style="font-size:36px;margin-bottom:14px;animation:spin 2s linear infinite;">🌱</div><div style="font-size:15px;color:#4A6741;font-weight:500;">データを読み込んでいます…</div></div>';
+    document.head.insertAdjacentHTML('beforeend','<style>@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}</style>');
+    document.body.appendChild(el);
+  }
+  el.style.display=show?'flex':'none';
+}
+
+/* ============================================================
+   updateStatus — モーダルからステータス/メモを GAS に更新
+============================================================ */
+async function updateStatus(responseId,newStatus,newMemo){
+  // ローカル即時更新
+  const r=DB.find(x=>x.id===responseId);
+  if(r){r.status=newStatus;if(newMemo!==undefined)r.memo=newMemo;}
+
+  if(!GAS_URL||GAS_URL==='YOUR_GAS_URL_HERE') return;
+  try{
+    await fetch(GAS_URL, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body:    JSON.stringify({action:'update',response_id:responseId,status:newStatus,memo:newMemo})
+    });
+  }catch(err){
+    console.warn('[GAS] ステータス更新失敗:',err.message);
+  }
+}
+
+/* ステータス更新ボタンのハンドラ */
+function applyStatusUpdate(id){
+  const sel=document.getElementById('modal-status-sel');
+  const memo=document.getElementById('modal-memo');
+  if(!sel)return;
+  updateStatus(id,sel.value,memo?memo.value:undefined).then(()=>{
+    filterTbl();
+    const btn=document.querySelector('[onclick="applyStatusUpdate(\''+id+'\')"]');
+    if(btn){btn.textContent='✓ 更新しました';btn.style.background='#82A88A';setTimeout(()=>{btn.textContent='更新する';btn.style.background='';},2500);}
+  });
+}
+
+/* ============================================================
+   RESULT
+============================================================ */
+function showResult(){
+  const cs=CATS.map((_,ci)=>{let s=0;for(let i=1;i<=5;i++)s+=(ans[ci*5+i]||0);return s;});
+  const tot=cs.reduce((a,b)=>a+b,0);
+  const lv=LVS.find(l=>tot>=l.min&&tot<=l.max)||LVS[4];
+  const mxS=Math.max(...cs);
+  const tops=cs.map((s,i)=>s===mxS?i:-1).filter(i=>i>=0);
+  const top=CATS[tops[0]];
+
+  document.getElementById('rn-name').textContent=curUser.name+' さん';
+  document.getElementById('res-h2').textContent='35問、お疲れさまでした。\nあなたのAge-Wellをお届けします。';
+  document.getElementById('res-score').textContent=tot;
+
+  const badge=document.getElementById('r-lv-badge');badge.style.background=lv.color;
+  document.getElementById('r-lv-n').textContent=lv.lv;
+  document.getElementById('r-lv-title').textContent=lv.title;
+  document.getElementById('r-lv-sn').textContent=tot+'点（'+lv.min+'〜'+lv.max+'点）';
+  document.getElementById('r-lv-state').textContent=lv.state;
+  document.getElementById('r-lv-desc').textContent=lv.desc;
+  document.getElementById('r-str-icon').textContent=top.icon;
+  document.getElementById('r-str-cat').textContent=top.code+'：'+top.name;
+  document.getElementById('r-str-title').textContent='【'+top.sTitle+'】'+(tops.length>1?' 他':'');
+  document.getElementById('r-str-desc').textContent=top.sDesc+(tops.length>1?'\n（同点で「'+CATS[tops[1]].sTitle+'」も輝いています）':'');
+  document.getElementById('r-advice').textContent=lv.advice;
+
+  if(radarInst)radarInst.destroy();
+  radarInst=new Chart(document.getElementById('radarChart').getContext('2d'),{
+    type:'radar',
+    data:{labels:CATS.map(c=>c.code+'：'+c.name.slice(0,5)),datasets:[{data:cs,backgroundColor:'rgba(93,143,103,.17)',borderColor:'#5D8F67',borderWidth:2,pointBackgroundColor:'#3D6E45',pointRadius:4}]},
+    options:{scales:{r:{min:0,max:25,ticks:{stepSize:5,font:{size:9}},pointLabels:{font:{size:10,family:"'Noto Sans JP'"}}}},plugins:{legend:{display:false}}}
+  });
+
+  document.getElementById('cat-bars').innerHTML=cs.map((s,i)=>`<div class="cs-row"><div class="cs-lbl"><span class="cs-code">${CATS[i].code}</span><span>${CATS[i].name.slice(0,7)}…</span></div><div class="cs-bar-wrap"><div class="cs-bar" style="width:${s/25*100}%"></div></div><span class="cs-val">${s}</span></div>`).join('');
+
+  // PDF fill
+  fillPDF(curUser.name,tot,lv,top,cs);
+  showPage('result');
+}
+
+function fillPDF(name,tot,lv,top,cs){
+  const now=new Date();
+  document.getElementById('pdf-date-info').innerHTML='診断実施日<br>'+now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日';
+  document.getElementById('pdf-name-big').textContent=name;
+  document.getElementById('pdf-score-n').textContent=tot;
+  const pb=document.getElementById('pdf-lv-badge');pb.style.background=lv.color;
+  document.getElementById('pdf-lv-n').textContent=lv.lv;
+  document.getElementById('pdf-lv-title').textContent=lv.title;
+  document.getElementById('pdf-lv-sub').textContent=tot+'点 ／ '+lv.min+'〜'+lv.max+'点';
+  document.getElementById('pdf-str-title').textContent='【'+top.sTitle+'】';
+  document.getElementById('pdf-str-desc').textContent=top.sDesc;
+  document.getElementById('pdf-cat-bars').innerHTML=cs.map((s,i)=>`<div class="pdf-cat-row"><span class="pdf-code">${CATS[i].code}</span><span class="pdf-cn">${CATS[i].name}</span><div class="pdf-bw"><div class="pdf-bar" style="width:${s/25*100}%"></div></div><span class="pdf-cv">${s}</span></div>`).join('');
+  document.getElementById('pdf-lv-state').textContent=lv.state;
+  document.getElementById('pdf-lv-desc').textContent=lv.desc;
+  document.getElementById('pdf-advice').textContent=lv.advice;
+}
+function doPrint(){window.print();}
+
+/* ============================================================
+   ADMIN — DASHBOARD
+============================================================ */
+let admCharts={};
+
+function showAdmin(sec){
+  document.querySelectorAll('.a-sec').forEach(s=>s.classList.remove('active'));
+  document.getElementById('a-'+sec).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(s=>s.classList.remove('active'));
+  const sb=document.getElementById('sb-'+sec);if(sb)sb.classList.add('active');
+  if(sec==='dashboard')buildDash();
+  if(sec==='list'){tblData=[...DB];currentPage=1;renderTbl();}
+}
+
+function buildDash(){
+  const tot=DB.length;
+  const avg=Math.round(DB.reduce((a,r)=>a+r.totalScore,0)/tot);
+  const unhand=DB.filter(r=>r.status==='未対応').length;
+  document.getElementById('dash-sub').textContent='最終更新：'+new Date().toLocaleString('ja-JP')+'　｜　総回答数：'+tot+'件';
+
+  // KPI
+  const lvCnt=[0,0,0,0,0];DB.forEach(r=>lvCnt[r.level-1]++);
+  const week=DB.filter(r=>(new Date()-new Date(r.submittedAt))<7*864e5).length;
+  document.getElementById('kpi-grid').innerHTML=[
+    {l:'総回答数',v:tot,s:'うち未対応 '+unhand+'件'},
+    {l:'平均スコア',v:avg,s:'/ 175点満点'},
+    {l:'最多レベル',v:'Lv.'+(lvCnt.indexOf(Math.max(...lvCnt))+1),s:Math.max(...lvCnt)+'名'},
+    {l:'直近7日',v:week,s:'件の回答'},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-lbl">${k.l}</div><div class="kpi-val">${k.v}</div><div class="kpi-sub">${k.s}</div></div>`).join('');
+
+  // Destroy old
+  Object.values(admCharts).forEach(c=>c&&c.destroy&&c.destroy());admCharts={};
+
+  // Level bar
+  admCharts.lv=new Chart(document.getElementById('c-level'),{type:'bar',data:{labels:['Lv.1','Lv.2','Lv.3','Lv.4','Lv.5'],datasets:[{data:lvCnt,backgroundColor:['#BFA89A','#A8B8A0','#82A88A','#5D8F67','#3D6E45'],borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}},responsive:true}});
+
+  // Strength doughnut
+  const strCnt={A:0,B:0,C:0,D:0,E:0,F:0,G:0};DB.forEach(r=>strCnt[r.topCode]++);
+  admCharts.str=new Chart(document.getElementById('c-strength'),{type:'doughnut',data:{labels:CATS.map(c=>c.code+':'+c.sTitle),datasets:[{data:Object.values(strCnt),backgroundColor:['#7A9E7E','#A8C5AB','#82A88A','#5D8F67','#3D6E45','#C8A882','#E0C9A8'],borderWidth:2}]},options:{plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}}},responsive:true}});
+
+  // Radar avg
+  const avgCs=CATS.map((_,ci)=>{const k=['A','B','C','D','E','F','G'][ci];return Math.round(DB.reduce((a,r)=>a+(r.cs[k]||0),0)/tot*10)/10;});
+  admCharts.rd=new Chart(document.getElementById('c-radar'),{type:'radar',data:{labels:CATS.map(c=>c.code+'：'+c.name.slice(0,5)),datasets:[{label:'全体平均',data:avgCs,backgroundColor:'rgba(93,143,103,.18)',borderColor:'#5D8F67',borderWidth:2,pointBackgroundColor:'#3D6E45',pointRadius:4}]},options:{scales:{r:{min:0,max:25,ticks:{stepSize:5,font:{size:9}}}},plugins:{legend:{display:false}}}});
+
+  // Trend 30days
+  const now=new Date();const days=[],cnts=[];
+  for(let d=29;d>=0;d--){const dt=new Date(now-d*864e5);days.push((dt.getMonth()+1)+'/'+(dt.getDate()));cnts.push(DB.filter(r=>r.submittedAt.startsWith(dt.toISOString().slice(0,10))).length);}
+  admCharts.tr=new Chart(document.getElementById('c-trend'),{type:'line',data:{labels:days,datasets:[{data:cnts,borderColor:'#7A9E7E',backgroundColor:'rgba(122,158,126,.1)',fill:true,tension:.4,pointRadius:2}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},responsive:true}});
+
+  // Recent
+  document.getElementById('recent-tbody').innerHTML=DB.slice(0,8).map(r=>`<tr onclick="openModal('${r.id}')" style="cursor:pointer"><td>${fmtDt(r.submittedAt)}</td><td>${r.name}</td><td>${r.totalScore}点</td><td><span class="lv-pill" style="background:${LVS[r.level-1].color}">Lv.${r.level}</span></td><td>${r.topCode}：${r.topTitle}</td></tr>`).join('');
+}
+
+/* ============================================================
+   ADMIN — TABLE
+============================================================ */
+let tblData=[...DB];let currentPage=1;const PER=20;let sortKey='submittedAt';let sortDir=-1;
+const TH_IDS={submittedAt:'th-date',name:'th-name',totalScore:'th-score',level:'th-lv'};
+
+function filterTbl(){
+  const q=document.getElementById('tbl-search').value.trim().toLowerCase();
+  const lv=document.getElementById('flt-lv').value;
+  const str=document.getElementById('flt-str').value;
+  tblData=DB.filter(r=>{
+    if(q&&!r.name.includes(q)&&!r.email.toLowerCase().includes(q))return false;
+    if(lv&&String(r.level)!==lv)return false;
+    if(str&&r.topCode!==str)return false;
+    return true;
+  });
+  currentPage=1;renderTbl();
+}
+
+function sortTbl(key){
+  // Clear old indicators
+  Object.values(TH_IDS).forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('sort-asc','sort-desc');}});
+  if(sortKey===key)sortDir*=-1;else{sortKey=key;sortDir=-1;}
+  tblData.sort((a,b)=>{const av=a[key],bv=b[key];return av<bv?-sortDir:av>bv?sortDir:0;});
+  // Set indicator
+  const thEl=document.getElementById(TH_IDS[key]);
+  if(thEl)thEl.classList.add(sortDir===-1?'sort-desc':'sort-asc');
+  renderTbl();
+}
+
+function renderTbl(){
+  const st=(currentPage-1)*PER;
+  const rows=tblData.slice(st,st+PER);
+  document.getElementById('main-tbody').innerHTML=rows.map(r=>`<tr onclick="openModal('${r.id}')">
+    <td style="white-space:nowrap">${fmtDt(r.submittedAt)}</td>
+    <td><strong>${r.name}</strong></td>
+    <td style="color:var(--mid);font-size:12px">${r.email}</td>
+    <td><strong>${r.totalScore}</strong><span style="font-size:11px;color:var(--mid)">点</span></td>
+    <td><span class="lv-pill" style="background:${LVS[r.level-1].color}">Lv.${r.level}</span></td>
+    <td>${r.topCode}：${r.topTitle}</td>
+    ${['A','B','C','D','E','F','G'].map(k=>`<td style="text-align:center;font-size:12px">${r.cs[k]}</td>`).join('')}
+  </tr>`).join('');
+
+  const tot=tblData.length;const tp=Math.ceil(tot/PER);
+  document.getElementById('pager-info').textContent=(st+1)+'〜'+Math.min(st+PER,tot)+'件 / 全'+tot+'件';
+  let pg='';
+  for(let p=1;p<=tp;p++){
+    if(p===1||p===tp||Math.abs(p-currentPage)<=1)pg+=`<button class="pg-btn ${p===currentPage?'active':''}" onclick="goPg(${p})">${p}</button>`;
+    else if(Math.abs(p-currentPage)===2)pg+=`<span style="padding:4px 3px;color:var(--mid)">…</span>`;
+  }
+  document.getElementById('page-btns').innerHTML=pg;
+}
+function goPg(p){currentPage=p;renderTbl();}
+
+/* ============================================================
+   MODAL
+============================================================ */
+function openModal(id){
+  const r=DB.find(x=>x.id===id);if(!r)return;
+  document.getElementById('modal-title').textContent=r.name+' さん';
+  const keys=['A','B','C','D','E','F','G'];
+  document.getElementById('modal-body').innerHTML=`
+    <div class="m-row"><span class="m-lbl">回答日時</span><span>${fmtDt(r.submittedAt)}</span></div>
+    <div class="m-row"><span class="m-lbl">メール</span><span style="font-size:13px">${r.email}</span></div>
+    <div class="m-row"><span class="m-lbl">現在のステータス</span><span><span class="st-pill st-${r.status}">${r.status}</span></span></div>
+    <hr class="m-div">
+    <div class="m-row"><span class="m-lbl">総合スコア</span><span style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--moss)">${r.totalScore}<span style="font-size:12px;color:var(--mid)">点</span></span></div>
+    <div class="m-row"><span class="m-lbl">Age-Wellレベル</span><span><span class="lv-pill" style="background:${LVS[r.level-1].color}">Lv.${r.level}</span> ${r.levelTitle}</span></div>
+    <div class="m-row"><span class="m-lbl">強みタイプ</span><span>${r.topCode}：${r.topTitle}</span></div>
+    <hr class="m-div">
+    <div style="font-size:11px;color:var(--sage);letter-spacing:.1em;font-weight:500;margin-bottom:11px;">カテゴリー別スコア</div>
+    ${keys.map((k,i)=>`<div class="m-bar-row"><span class="m-code">${k}</span><span class="m-name">${CATS[i].name}</span><div class="m-bw"><div class="m-bar" style="width:${r.cs[k]/25*100}%"></div></div><span class="m-val">${r.cs[k]}</span></div>`).join('')}
+    <hr class="m-div">
+    <div style="font-size:11px;color:var(--mid);margin-bottom:8px;">Q1〜Q35 回答値</div>
+    <div class="ans-grid">${Object.entries(r.ans).map(([k,v])=>`<span class="ans-chip"><span>Q${k}:</span>${v}</span>`).join('')}</div>
+    <hr class="m-div">
+    <div style="font-size:11px;color:var(--sage);letter-spacing:.1em;font-weight:500;margin-bottom:11px;">ステータス更新</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+      <select id="modal-status-sel" style="padding:8px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'Noto Sans JP',sans-serif;background:var(--white);">
+        <option value="未対応" ${r.status==='未対応'?'selected':''}>未対応</option>
+        <option value="フォロー予定" ${r.status==='フォロー予定'?'selected':''}>フォロー予定</option>
+        <option value="対応済み" ${r.status==='対応済み'?'selected':''}>対応済み</option>
+      </select>
+      <button onclick="applyStatusUpdate('${r.id}')" style="background:var(--moss);color:#fff;border:none;padding:8px 18px;border-radius:9px;font-size:13px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;font-weight:500;transition:all .2s;">更新する</button>
+    </div>
+    <textarea id="modal-memo" placeholder="メモ（任意）" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'Noto Sans JP',sans-serif;resize:vertical;min-height:64px;background:var(--white);">${r.memo||''}</textarea>
+  `;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(e){if(e.target.id==='modal')closeModalDirect();}
+function closeModalDirect(){document.getElementById('modal').classList.remove('open');}
+
+/* ============================================================
+   CSV EXPORT
+============================================================ */
+function exportCSV(){
+  const hdr=['回答日時','氏名','メールアドレス','総合点','レベル','レベル名','強みコード','強みタイプ','A','B','C','D','E','F','G',...Array.from({length:35},(_,i)=>'Q'+(i+1))];
+  const rows=DB.map(r=>[
+    fmtDt(r.submittedAt),r.name,r.email,r.totalScore,r.level,r.levelTitle,r.topCode,r.topTitle,
+    r.cs.A,r.cs.B,r.cs.C,r.cs.D,r.cs.E,r.cs.F,r.cs.G,
+    ...Array.from({length:35},(_,i)=>r.ans[i+1]||'')
+  ]);
+  const csv='\uFEFF'+[hdr,...rows].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})),download:'agewell_'+new Date().toISOString().slice(0,10)+'.csv'});
+  document.body.appendChild(a);a.click();a.remove();
+}
+
+/* ============================================================
+   UTILS
+============================================================ */
+function fmtDt(iso){const d=new Date(iso);return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0')+' '+d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+
+/* ============================================================
+   INIT
+============================================================ */
+(function init(){
+  if(isLoggedIn()){ updateHeader(true); }
+  tblData = [...DB];
+})();
+</script>
+</body>
+</html>
