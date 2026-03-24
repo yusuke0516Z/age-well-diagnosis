@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -592,7 +593,7 @@ button{font-family:'Noto Sans JP',sans-serif;}
       <div class="login-err" id="login-err">IDまたはパスワードが正しくありません</div>
       <div class="f-group">
         <label class="f-label">メールアドレス（ID）</label>
-        <input type="email" id="login-id" class="f-input" placeholder="info@miharu-inc.jp" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+        <input type="email" id="login-id" class="f-input" placeholder="メールアドレス" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
       <div class="f-group">
         <label class="f-label">パスワード</label>
@@ -602,11 +603,6 @@ button{font-family:'Noto Sans JP',sans-serif;}
         </div>
       </div>
       <button class="btn-p" onclick="doLogin()" style="width:100%;justify-content:center;margin-top:4px;">ログイン</button>
-      <div class="login-hint">
-        デモ用ログイン情報<br>
-        ID：info@miharu-inc.jp<br>
-        PW：MM20200110
-      </div>
     </div>
     <button class="back-btn" style="margin-top:20px;" onclick="showPage('top')">← 診断サイトへ戻る</button>
   </div>
@@ -752,8 +748,16 @@ button{font-family:'Noto Sans JP',sans-serif;}
 <!-- ==========================================
      JAVASCRIPT
 ========================================== -->
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 'use strict';
+
+/* ============================================================
+   GAS 設定
+   ▼ デプロイ後に取得したウェブアプリURLをここに貼る
+============================================================ */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzJvnqzOHqTyFDiSbCcpyRPsxyIPlU0NsaC3br2SvpRvtQ6NIZkhiftZEAr7oAm4-4k7A/exec';
+// 例: 'https://script.google.com/macros/s/AKfycbxXXXXXXXX/exec'
+// GAS_URL が未設定の場合はモックデータで動作します（デモモード）
 
 /* ============================================================
    AUTH
@@ -790,9 +794,12 @@ function gotoAdmin(){
   if(isLoggedIn()){ enterAdmin(); }
   else { showPage('login'); }
 }
-function enterAdmin(){
+async function enterAdmin(){
   updateHeader(true);
   showPage('admin');
+  if(!dbLoaded){
+    await loadDBFromGAS();   // GASからデータ取得してから描画
+  }
   showAdmin('dashboard');
 }
 function updateHeader(isAdmin){
@@ -901,7 +908,10 @@ function makeMock(){
   }
   return out.sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt));
 }
-const DB=makeMock();
+// DB は空で初期化 → 管理画面アクセス時に GAS から取得
+// GAS_URL 未設定時はモックデータをフォールバックとして使用
+let DB = [];
+let dbLoaded = false;
 
 /* ============================================================
    PAGE NAVIGATION
@@ -980,26 +990,137 @@ function nextCat(ci){
   if(miss.length){miss.forEach(q=>{const c=document.getElementById('qc-'+q);if(c){c.classList.add('e');setTimeout(()=>c.classList.remove('e'),600);}});document.getElementById('qc-'+miss[0]).scrollIntoView({behavior:'smooth',block:'center'});return;}
   catIdx=ci+1;renderCat(catIdx);window.scrollTo({top:0,behavior:'smooth'});
 }
-function submitQuiz(){
+async function submitQuiz(){
   const miss=[];
   for(let i=31;i<=35;i++)if(!ans[i])miss.push(i);
   if(miss.length){miss.forEach(q=>{const c=document.getElementById('qc-'+q);if(c){c.classList.add('e');setTimeout(()=>c.classList.remove('e'),600);}});document.getElementById('qc-'+miss[0]).scrollIntoView({behavior:'smooth',block:'center'});return;}
-  saveToDB();
-  showResult();
+  showResult();        // 先に結果を表示
+  saveToDB();          // GAS保存はバックグラウンドで（awaitしない→UIをブロックしない）
 }
 
-function saveToDB(){
+async function saveToDB(){
   const cs=CATS.map((_,ci)=>{let s=0;for(let i=1;i<=5;i++)s+=(ans[ci*5+i]||0);return s;});
   const tot=cs.reduce((a,b)=>a+b,0);
   const lv=LVS.find(l=>tot>=l.min&&tot<=l.max)||LVS[4];
   const mxS=Math.max(...cs);const topI=cs.indexOf(mxS);
-  DB.unshift({
-    id:'R'+(1000+DB.length),name:curUser.name,email:curUser.email,
+
+  // ① ローカル DB にも即時追加（同セッション中の管理画面に即反映）
+  const localEntry={
+    id:'R_pending_'+Date.now(),name:curUser.name,email:curUser.email,
     submittedAt:new Date().toISOString(),
     totalScore:tot,level:lv.lv,levelTitle:lv.title,
     topCode:CATS[topI].code,topTitle:CATS[topI].sTitle,
     cs:{A:cs[0],B:cs[1],C:cs[2],D:cs[3],E:cs[4],F:cs[5],G:cs[6]},
-    ans:{...ans},status:'未対応'
+    ans:{...ans},status:'未対応',memo:''
+  };
+  DB.unshift(localEntry);
+
+  // ② GAS未設定ならここで終了（デモモード）
+  if(!GAS_URL||GAS_URL==='YOUR_GAS_URL_HERE'){
+    console.log('[デモ] GAS未設定のためローカルのみ保存');
+    return;
+  }
+
+  // ③ GAS へ POST送信（no-cors + text/plain でCORSを回避）
+  // GitHub Pages→GASはContent-Type:application/jsonでpreflightが発生しCORSエラーになる
+  // GASの標準的な対処法: mode:no-cors + Content-Type:text/plain で送信する
+  const payload = JSON.stringify({
+    action:'submit',
+    name:curUser.name, email:curUser.email,
+    totalScore:tot, level:lv.lv, levelTitle:lv.title,
+    topCode:CATS[topI].code, topTitle:CATS[topI].sTitle,
+    cs:{A:cs[0],B:cs[1],C:cs[2],D:cs[3],E:cs[4],F:cs[5],G:cs[6]},
+    ans:{...ans}
+  });
+  try{
+    await fetch(GAS_URL, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body:    payload
+    });
+    console.log('[GAS] 診断データ送信完了');
+  }catch(err){
+    console.warn('[GAS] POST失敗:', err.message);
+  }
+}
+
+/* ============================================================
+   loadDBFromGAS — 管理画面起動時に GAS から一覧取得
+============================================================ */
+async function loadDBFromGAS(){
+  // GAS未設定 → モックデータで動作
+  if(!GAS_URL||GAS_URL==='YOUR_GAS_URL_HERE'){
+    if(DB.length===0) DB=makeMock();
+    dbLoaded=true;
+    return;
+  }
+  showAdminLoading(true);
+  try{
+    const res=await fetch(GAS_URL+'?action=list&limit=500');
+    const json=await res.json();
+    if(json.status==='ok'&&Array.isArray(json.data)){
+      // GAS取得データをマージ（pendingは残す）
+      const pending=DB.filter(r=>r.id.startsWith('R_pending_'));
+      DB=[...pending,...json.data];
+      dbLoaded=true;
+      console.log('[GAS] 一覧取得:',json.data.length+'件');
+    }else{
+      throw new Error(json.message||'list error');
+    }
+  }catch(err){
+    console.warn('[GAS] 取得失敗 → モック表示:',err.message);
+    if(DB.length===0) DB=makeMock();
+    dbLoaded=true;
+  }finally{
+    showAdminLoading(false);
+  }
+}
+
+/* ローディングオーバーレイ */
+function showAdminLoading(show){
+  let el=document.getElementById('admin-loading');
+  if(!el){
+    el=document.createElement('div');
+    el.id='admin-loading';
+    el.style.cssText='position:fixed;inset:0;background:rgba(255,255,255,.82);z-index:999;display:none;align-items:center;justify-content:center;';
+    el.innerHTML='<div style="text-align:center;font-family:\'Noto Sans JP\',sans-serif;"><div style="font-size:36px;margin-bottom:14px;animation:spin 2s linear infinite;">🌱</div><div style="font-size:15px;color:#4A6741;font-weight:500;">データを読み込んでいます…</div></div>';
+    document.head.insertAdjacentHTML('beforeend','<style>@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}</style>');
+    document.body.appendChild(el);
+  }
+  el.style.display=show?'flex':'none';
+}
+
+/* ============================================================
+   updateStatus — モーダルからステータス/メモを GAS に更新
+============================================================ */
+async function updateStatus(responseId,newStatus,newMemo){
+  // ローカル即時更新
+  const r=DB.find(x=>x.id===responseId);
+  if(r){r.status=newStatus;if(newMemo!==undefined)r.memo=newMemo;}
+
+  if(!GAS_URL||GAS_URL==='YOUR_GAS_URL_HERE') return;
+  try{
+    await fetch(GAS_URL, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body:    JSON.stringify({action:'update',response_id:responseId,status:newStatus,memo:newMemo})
+    });
+  }catch(err){
+    console.warn('[GAS] ステータス更新失敗:',err.message);
+  }
+}
+
+/* ステータス更新ボタンのハンドラ */
+function applyStatusUpdate(id){
+  const sel=document.getElementById('modal-status-sel');
+  const memo=document.getElementById('modal-memo');
+  if(!sel)return;
+  updateStatus(id,sel.value,memo?memo.value:undefined).then(()=>{
+    filterTbl();
+    const btn=document.querySelector('[onclick="applyStatusUpdate(\''+id+'\')"]');
+    if(btn){btn.textContent='✓ 更新しました';btn.style.background='#82A88A';setTimeout(()=>{btn.textContent='更新する';btn.style.background='';},2500);}
   });
 }
 
@@ -1077,14 +1198,26 @@ function showAdmin(sec){
 }
 
 function buildDash(){
+  if(!DB||DB.length===0){
+    document.getElementById('dash-sub').textContent='データなし（診断回答後に管理画面を開いてください）';
+    document.getElementById('kpi-grid').innerHTML='<div style="padding:20px;color:var(--mid);font-size:14px;">まだ回答データがありません</div>';
+    return;
+  }
   const tot=DB.length;
-  const avg=Math.round(DB.reduce((a,r)=>a+r.totalScore,0)/tot);
+  // GASから取得した値は文字列の場合があるのでNumber()で確実に変換
+  const avg=tot>0 ? Math.round(DB.reduce((a,r)=>a+Number(r.totalScore||0),0)/tot) : 0;
   const unhand=DB.filter(r=>r.status==='未対応').length;
   document.getElementById('dash-sub').textContent='最終更新：'+new Date().toLocaleString('ja-JP')+'　｜　総回答数：'+tot+'件';
 
   // KPI
-  const lvCnt=[0,0,0,0,0];DB.forEach(r=>lvCnt[r.level-1]++);
-  const week=DB.filter(r=>(new Date()-new Date(r.submittedAt))<7*864e5).length;
+  const lvCnt=[0,0,0,0,0];
+  DB.forEach(r=>{
+    const lv=Number(r.level||0);
+    if(lv>=1&&lv<=5) lvCnt[lv-1]++;
+  });
+  const week=DB.filter(r=>{
+    try{ return (Date.now()-new Date(r.submittedAt).getTime())<7*864e5; }catch(e){return false;}
+  }).length;
   document.getElementById('kpi-grid').innerHTML=[
     {l:'総回答数',v:tot,s:'うち未対応 '+unhand+'件'},
     {l:'平均スコア',v:avg,s:'/ 175点満点'},
@@ -1103,7 +1236,7 @@ function buildDash(){
   admCharts.str=new Chart(document.getElementById('c-strength'),{type:'doughnut',data:{labels:CATS.map(c=>c.code+':'+c.sTitle),datasets:[{data:Object.values(strCnt),backgroundColor:['#7A9E7E','#A8C5AB','#82A88A','#5D8F67','#3D6E45','#C8A882','#E0C9A8'],borderWidth:2}]},options:{plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}}},responsive:true}});
 
   // Radar avg
-  const avgCs=CATS.map((_,ci)=>{const k=['A','B','C','D','E','F','G'][ci];return Math.round(DB.reduce((a,r)=>a+(r.cs[k]||0),0)/tot*10)/10;});
+  const avgCs=CATS.map((_,ci)=>{const k=['A','B','C','D','E','F','G'][ci];return Math.round(DB.reduce((a,r)=>a+Number((r.cs&&r.cs[k])||0),0)/tot*10)/10;});
   admCharts.rd=new Chart(document.getElementById('c-radar'),{type:'radar',data:{labels:CATS.map(c=>c.code+'：'+c.name.slice(0,5)),datasets:[{label:'全体平均',data:avgCs,backgroundColor:'rgba(93,143,103,.18)',borderColor:'#5D8F67',borderWidth:2,pointBackgroundColor:'#3D6E45',pointRadius:4}]},options:{scales:{r:{min:0,max:25,ticks:{stepSize:5,font:{size:9}}}},plugins:{legend:{display:false}}}});
 
   // Trend 30days
@@ -1112,7 +1245,7 @@ function buildDash(){
   admCharts.tr=new Chart(document.getElementById('c-trend'),{type:'line',data:{labels:days,datasets:[{data:cnts,borderColor:'#7A9E7E',backgroundColor:'rgba(122,158,126,.1)',fill:true,tension:.4,pointRadius:2}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},responsive:true}});
 
   // Recent
-  document.getElementById('recent-tbody').innerHTML=DB.slice(0,8).map(r=>`<tr onclick="openModal('${r.id}')" style="cursor:pointer"><td>${fmtDt(r.submittedAt)}</td><td>${r.name}</td><td>${r.totalScore}点</td><td><span class="lv-pill" style="background:${LVS[r.level-1].color}">Lv.${r.level}</span></td><td>${r.topCode}：${r.topTitle}</td></tr>`).join('');
+  document.getElementById('recent-tbody').innerHTML=DB.slice(0,8).map(r=>`<tr onclick="openModal('${r.id}')" style="cursor:pointer"><td>${fmtDt(r.submittedAt)}</td><td>${r.name}</td><td>${Number(r.totalScore)}点</td><td><span class="lv-pill" style="background:${LVS[Math.max(0,Math.min(4,Number(r.level||1)-1))].color}">Lv.${r.level}</span></td><td>${r.topCode}：${r.topTitle}</td></tr>`).join('');
 }
 
 /* ============================================================
@@ -1153,7 +1286,7 @@ function renderTbl(){
     <td><strong>${r.name}</strong></td>
     <td style="color:var(--mid);font-size:12px">${r.email}</td>
     <td><strong>${r.totalScore}</strong><span style="font-size:11px;color:var(--mid)">点</span></td>
-    <td><span class="lv-pill" style="background:${LVS[r.level-1].color}">Lv.${r.level}</span></td>
+    <td><span class="lv-pill" style="background:${LVS[Math.max(0,Math.min(4,Number(r.level||1)-1))].color}">Lv.${r.level}</span></td>
     <td>${r.topCode}：${r.topTitle}</td>
     ${['A','B','C','D','E','F','G'].map(k=>`<td style="text-align:center;font-size:12px">${r.cs[k]}</td>`).join('')}
   </tr>`).join('');
@@ -1179,7 +1312,7 @@ function openModal(id){
   document.getElementById('modal-body').innerHTML=`
     <div class="m-row"><span class="m-lbl">回答日時</span><span>${fmtDt(r.submittedAt)}</span></div>
     <div class="m-row"><span class="m-lbl">メール</span><span style="font-size:13px">${r.email}</span></div>
-    <div class="m-row"><span class="m-lbl">ステータス</span><span><span class="st-pill st-${r.status}">${r.status}</span></span></div>
+    <div class="m-row"><span class="m-lbl">現在のステータス</span><span><span class="st-pill st-${r.status}">${r.status}</span></span></div>
     <hr class="m-div">
     <div class="m-row"><span class="m-lbl">総合スコア</span><span style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--moss)">${r.totalScore}<span style="font-size:12px;color:var(--mid)">点</span></span></div>
     <div class="m-row"><span class="m-lbl">Age-Wellレベル</span><span><span class="lv-pill" style="background:${LVS[r.level-1].color}">Lv.${r.level}</span> ${r.levelTitle}</span></div>
@@ -1190,6 +1323,17 @@ function openModal(id){
     <hr class="m-div">
     <div style="font-size:11px;color:var(--mid);margin-bottom:8px;">Q1〜Q35 回答値</div>
     <div class="ans-grid">${Object.entries(r.ans).map(([k,v])=>`<span class="ans-chip"><span>Q${k}:</span>${v}</span>`).join('')}</div>
+    <hr class="m-div">
+    <div style="font-size:11px;color:var(--sage);letter-spacing:.1em;font-weight:500;margin-bottom:11px;">ステータス更新</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+      <select id="modal-status-sel" style="padding:8px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'Noto Sans JP',sans-serif;background:var(--white);">
+        <option value="未対応" ${r.status==='未対応'?'selected':''}>未対応</option>
+        <option value="フォロー予定" ${r.status==='フォロー予定'?'selected':''}>フォロー予定</option>
+        <option value="対応済み" ${r.status==='対応済み'?'selected':''}>対応済み</option>
+      </select>
+      <button onclick="applyStatusUpdate('${r.id}')" style="background:var(--moss);color:#fff;border:none;padding:8px 18px;border-radius:9px;font-size:13px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;font-weight:500;transition:all .2s;">更新する</button>
+    </div>
+    <textarea id="modal-memo" placeholder="メモ（任意）" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:'Noto Sans JP',sans-serif;resize:vertical;min-height:64px;background:var(--white);">${r.memo||''}</textarea>
   `;
   document.getElementById('modal').classList.add('open');
 }
@@ -1220,8 +1364,8 @@ function fmtDt(iso){const d=new Date(iso);return d.getFullYear()+'/'+(d.getMonth
    INIT
 ============================================================ */
 (function init(){
-  // ログイン状態を復元
-  if(isLoggedIn()){updateHeader(true);}
+  if(isLoggedIn()){ updateHeader(true); }
+  tblData = [...DB];
 })();
 </script>
 </body>
