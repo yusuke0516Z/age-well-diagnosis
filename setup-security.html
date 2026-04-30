@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Age-Well セキュリティ設定ツール</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    max-width: 700px;
+    width: 100%;
+    padding: 40px;
+  }
+  h1 {
+    color: #2d3748;
+    margin-bottom: 10px;
+    font-size: 28px;
+  }
+  .subtitle {
+    color: #718096;
+    margin-bottom: 30px;
+    font-size: 14px;
+  }
+  .warning {
+    background: #fff5f5;
+    border-left: 4px solid #fc8181;
+    padding: 15px;
+    margin-bottom: 25px;
+    border-radius: 4px;
+  }
+  .warning h3 {
+    color: #c53030;
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  .warning p {
+    color: #742a2a;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .form-group {
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    color: #2d3748;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  .hint {
+    color: #718096;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  input:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+  .output {
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    margin-right: 10px;
+    margin-top: 10px;
+  }
+  button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+  button:active {
+    transform: translateY(0);
+  }
+  .success {
+    background: #f0fff4;
+    border: 2px solid #9ae6b4;
+    color: #22543d;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 15px;
+    display: none;
+  }
+  .hash-display {
+    background: #edf2f7;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    margin-top: 5px;
+    color: #2d3748;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔐 Age-Well セキュリティ設定</h1>
+  <p class="subtitle">認証情報のハッシュ生成ツール</p>
+
+  <div class="warning">
+    <h3>⚠️ 重要な警告</h3>
+    <p>
+      このツールはローカル環境でのみ使用してください。<br>
+      生成されたハッシュ値は config.js ファイルに保存し、元のパスワードは絶対に config.js に記載しないでください。<br>
+      <strong>config.js ファイルは Git にコミットしないでください。</strong>
+    </p>
+  </div>
+
+  <div class="form-group">
+    <label for="email">管理者メールアドレス</label>
+    <input type="email" id="email" placeholder="admin@example.com">
+    <div class="hint">管理画面へのログインに使用するメールアドレス</div>
+    <div id="emailHash" class="hash-display" style="display:none;"></div>
+  </div>
+
+  <div class="form-group">
+    <label for="password">管理者パスワード</label>
+    <input type="password" id="password" placeholder="強力なパスワードを入力">
+    <div class="hint">
+      推奨: 12文字以上、大小英字・数字・記号を含む<br>
+      パスワード強度: <span id="strength" style="font-weight:bold;color:#e53e3e;">-</span>
+    </div>
+    <div id="passwordHash" class="hash-display" style="display:none;"></div>
+  </div>
+
+  <div class="form-group">
+    <label for="gasUrl">Google Apps Script URL</label>
+    <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/...">
+    <div class="hint">GAS デプロイ後に取得したウェブアプリURL</div>
+  </div>
+
+  <button onclick="generateHashes()">🔑 ハッシュ生成</button>
+  <button onclick="generateConfig()">📄 config.js 生成</button>
+  <button onclick="copyToClipboard()">📋 コピー</button>
+
+  <div id="success" class="success">
+    ✅ config.js の内容を生成しました。下記をコピーして config.js ファイルとして保存してください。
+  </div>
+
+  <div class="form-group" style="margin-top: 20px;">
+    <label>生成された config.js</label>
+    <div id="output" class="output">ここに生成された設定ファイルが表示されます</div>
+  </div>
+</div>
+
+<script src="security.js"></script>
+<script>
+let generatedConfig = '';
+
+// パスワード強度チェック
+document.getElementById('password').addEventListener('input', function() {
+  const pw = this.value;
+  const strengthEl = document.getElementById('strength');
+
+  if (pw.length === 0) {
+    strengthEl.textContent = '-';
+    strengthEl.style.color = '#e53e3e';
+    return;
+  }
+
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (pw.length >= 16) score++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if (/\d/.test(pw)) score++;
+  if (/[^a-zA-Z0-9]/.test(pw)) score++;
+
+  if (score <= 2) {
+    strengthEl.textContent = '弱い';
+    strengthEl.style.color = '#e53e3e';
+  } else if (score <= 4) {
+    strengthEl.textContent = '普通';
+    strengthEl.style.color = '#dd6b20';
+  } else {
+    strengthEl.textContent = '強力';
+    strengthEl.style.color = '#38a169';
+  }
+});
+
+async function generateHashes() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  if (!email || !password) {
+    alert('メールアドレスとパスワードを入力してください');
+    return;
+  }
+
+  if (!Security.isValidEmail(email)) {
+    alert('有効なメールアドレスを入力してください');
+    return;
+  }
+
+  if (password.length < 8) {
+    alert('パスワードは8文字以上にしてください');
+    return;
+  }
+
+  // ハッシュ生成
+  const emailHash = await Security.sha256(email);
+  const passwordHash = await Security.sha256(password);
+
+  // 表示
+  const emailHashEl = document.getElementById('emailHash');
+  const passwordHashEl = document.getElementById('passwordHash');
+
+  emailHashEl.textContent = 'Hash: ' + emailHash;
+  emailHashEl.style.display = 'block';
+
+  passwordHashEl.textContent = 'Hash: ' + passwordHash;
+  passwordHashEl.style.display = 'block';
+}
+
+async function generateConfig() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const gasUrl = document.getElementById('gasUrl').value.trim();
+
+  if (!email || !password) {
+    alert('メールアドレスとパスワードを入力してください');
+    return;
+  }
+
+  if (!Security.isValidEmail(email)) {
+    alert('有効なメールアドレスを入力してください');
+    return;
+  }
+
+  if (password.length < 8) {
+    alert('パスワードは8文字以上にしてください');
+    return;
+  }
+
+  // ハッシュ生成
+  const emailHash = await Security.sha256(email);
+  const passwordHash = await Security.sha256(password);
+
+  // config.js 生成
+  generatedConfig = `/**
+ * Age-Well 診断システム - セキュア設定ファイル
+ *
+ * ⚠️ このファイルは絶対に Git にコミットしないでください
+ * ⚠️ 本番環境では必ずサーバーサイド認証に移行してください
+ *
+ * 生成日時: ${new Date().toLocaleString('ja-JP')}
+ */
+
+const CONFIG = {
+  // Google Apps Script URL
+  GAS_URL: '${gasUrl || 'YOUR_GAS_URL_HERE'}',
+
+  // 認証設定 (SHA-256ハッシュ値)
+  AUTH: {
+    idHash: '${emailHash}',
+    pwHash: '${passwordHash}',
+  },
+
+  // セキュリティ設定
+  SECURITY: {
+    // HTTPS強制 (本番環境では必ず true)
+    enforceHttps: true,
+
+    // セッションタイムアウト (ミリ秒)
+    sessionTimeout: 3600000, // 1時間
+
+    // ログイン試行回数制限
+    maxLoginAttempts: 5,
+    lockoutDuration: 900000, // 15分
+  }
+};
+
+// グローバルに公開
+if (typeof window !== 'undefined') {
+  window.CONFIG = CONFIG;
+}
+`;
+
+  document.getElementById('output').textContent = generatedConfig;
+  document.getElementById('success').style.display = 'block';
+}
+
+function copyToClipboard() {
+  if (!generatedConfig) {
+    alert('まず config.js を生成してください');
+    return;
+  }
+
+  navigator.clipboard.writeText(generatedConfig).then(() => {
+    alert('✅ クリップボードにコピーしました！\n\nこれを config.js として保存してください。');
+  }).catch(() => {
+    alert('コピーに失敗しました。テキストを手動で選択してコピーしてください。');
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+# Age-Well セキュリティ設定
+# 機密情報を含むファイルは絶対にコミットしない
+
+# 認証設定（本番用）
+config.js
+config.local.js
+.env
+.env.local
+.env.production
+
+# セキュリティキー
+*.key
+*.pem
+*.p12
+secrets/
+
+# ローカルストレージバックアップ
+localStorage.json
+
+# ログファイル
+*.log
+logs/
+
+# OS固有
+.DS_Store
+Thumbs.db
+
+# エディタ
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# バックアップ
+*.bak
+*.backup

@@ -4,10 +4,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="X-XSS-Protection" content="1; mode=block">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Age-Well診断 | あなたらしいAge-Wellを見つける</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Noto+Sans+JP:wght@300;400;500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- セキュリティユーティリティ -->
+<script src="security.js"></script>
+<!-- 設定ファイル (config.example.js をコピーして config.js を作成) -->
+<script src="config.js"></script>
 
 <style>
 /* ============================================================
@@ -752,37 +761,89 @@ button{font-family:'Noto Sans JP',sans-serif;}
 'use strict';
 
 /* ============================================================
-   GAS 設定
-   ▼ デプロイ後に取得したウェブアプリURLをここに貼る
-============================================================ */
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzJvnqzOHqTyFDiSbCcpyRPsxyIPlU0NsaC3br2SvpRvtQ6NIZkhiftZEAr7oAm4-4k7A/exec';
-// 例: 'https://script.google.com/macros/s/AKfycbxXXXXXXXX/exec'
-// GAS_URL が未設定の場合はモックデータで動作します（デモモード）
+   セキュリティ設定
 
-/* ============================================================
-   AUTH
+   ⚠️ 認証情報とGAS URLは config.js に移動されました
+   ⚠️ config.example.js をコピーして config.js を作成してください
+   ⚠️ setup-security.html を使用してハッシュ値を生成してください
 ============================================================ */
-const AUTH = { id:'info@miharu-inc.jp', pw:'MM20200110' };
-const LS_KEY = 'agewell_admin_auth';
 
-function isLoggedIn(){ return localStorage.getItem(LS_KEY) === '1'; }
-function doLogin(){
+// config.js から読み込み
+const GAS_URL = window.CONFIG?.GAS_URL || '';
+const LS_KEY = 'agewell_session';
+
+// HTTPS強制
+if (window.CONFIG?.SECURITY?.enforceHttps) {
+  Security.enforceHttps();
+}
+
+function isLoggedIn(){ return Security.session.isValid(); }
+
+async function doLogin(){
   const id = document.getElementById('login-id').value.trim();
   const pw = document.getElementById('login-pw').value;
   const err = document.getElementById('login-err');
-  if(id === AUTH.id && pw === AUTH.pw){
-    localStorage.setItem(LS_KEY,'1');
+
+  // 設定ファイルチェック
+  if (!window.CONFIG || !window.CONFIG.AUTH || !window.CONFIG.AUTH.idHash || !window.CONFIG.AUTH.pwHash) {
+    err.textContent = '❌ 設定エラー: config.js が見つかりません。setup-security.html で設定を作成してください。';
+    err.classList.add('show');
+    return;
+  }
+
+  // ログイン試行制限チェック
+  if (Security.loginAttempts.isLocked()) {
+    const remaining = Security.loginAttempts.getRemainingTime();
+    err.textContent = `🔒 ログインがロックされています。あと ${remaining} 秒後に再試行してください。`;
+    err.classList.add('show');
+    return;
+  }
+
+  // 入力値サニタイズ
+  const sanitizedId = Security.sanitizeInput(id);
+  const sanitizedPw = Security.sanitizeInput(pw);
+
+  // メールアドレス検証
+  if (!Security.isValidEmail(sanitizedId)) {
+    err.textContent = '❌ 有効なメールアドレスを入力してください';
+    err.classList.add('show');
+    return;
+  }
+
+  // ハッシュ値で認証
+  const idHash = await Security.sha256(sanitizedId);
+  const pwHash = await Security.sha256(sanitizedPw);
+
+  if(idHash === window.CONFIG.AUTH.idHash && pwHash === window.CONFIG.AUTH.pwHash){
+    // 認証成功
+    Security.session.set({ authenticated: true, email: sanitizedId });
+    Security.loginAttempts.reset();
     err.classList.remove('show');
     enterAdmin();
   } else {
+    // 認証失敗
+    const isLocked = Security.loginAttempts.increment();
+
+    if (isLocked) {
+      const lockoutMin = Math.ceil((window.CONFIG?.SECURITY?.lockoutDuration || 900000) / 60000);
+      err.textContent = `🔒 ログイン試行回数が上限に達しました。${lockoutMin}分間ロックされます。`;
+    } else {
+      const remaining = (window.CONFIG?.SECURITY?.maxLoginAttempts || 5) - Security.loginAttempts.attempts;
+      err.textContent = `❌ IDまたはパスワードが正しくありません（残り${remaining}回）`;
+    }
+
     err.classList.add('show');
     document.getElementById('login-id').classList.add('err');
     document.getElementById('login-pw').classList.add('err');
-    setTimeout(()=>{ document.getElementById('login-id').classList.remove('err'); document.getElementById('login-pw').classList.remove('err'); },2000);
+    setTimeout(()=>{
+      document.getElementById('login-id').classList.remove('err');
+      document.getElementById('login-pw').classList.remove('err');
+    },2000);
   }
 }
 function doLogout(){
-  localStorage.removeItem(LS_KEY);
+  Security.session.clear();
+  Security.loginAttempts.reset();
   updateHeader(false);
   showPage('top');
 }
